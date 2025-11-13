@@ -6,8 +6,9 @@ import Financials from './components/Financials';
 import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
-import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment } from './types';
-import { initialProjects, initialInvoices, initialEmployees, initialTransactions } from './data';
+import Clients from './components/Clients';
+import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment, Client, PaymentMethod } from './types';
+import { initialProjects, initialInvoices, initialEmployees, initialTransactions, initialClients } from './data';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [clients, setClients] = useState<Client[]>(initialClients);
 
   const handleReceivePayment = useCallback((invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
     const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
@@ -119,7 +121,8 @@ const App: React.FC = () => {
             id: `pay-${Date.now()}`,
             date: new Date().toISOString().split('T')[0],
             amount: totalAmount,
-            method: 'Initial Payment',
+            method: PaymentMethod.UNSPECIFIED,
+            notes: 'Auto-created full payment on invoice creation.',
         };
         updatedInvoice.payments.push(newPayment);
     }
@@ -192,6 +195,15 @@ const App: React.FC = () => {
         });
     }
   }, [invoices]);
+
+  const handleSendReminder = useCallback((invoiceId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    setInvoices(currentInvoices => 
+        currentInvoices.map(inv => 
+            inv.id === invoiceId ? { ...inv, lastReminderSent: today } : inv
+        )
+    );
+  }, []);
 
   const handleSaveProject = useCallback((project: Omit<Project, 'id'> & { id?: string }) => {
     if (project.id) { // Editing
@@ -317,6 +329,30 @@ const App: React.FC = () => {
     setTransactions(prev => prev.filter(t => t.id !== transactionId));
   }, []);
 
+  const handleSaveClient = useCallback((clientData: Omit<Client, 'id'> & { id?: string }) => {
+    let updatedClient: Client;
+    if (clientData.id) { // Editing
+        updatedClient = clientData as Client;
+        setClients(prev => prev.map(c => c.id === clientData.id ? updatedClient : c));
+        
+        // Update associated projects and invoices
+        setProjects(prev => prev.map(p => p.clientId === updatedClient.id ? { ...p, clientName: updatedClient.name } : p));
+        setInvoices(prev => prev.map(i => i.clientId === updatedClient.id ? { ...i, clientName: updatedClient.name, clientAddress: updatedClient.address } : i));
+
+    } else { // Creating
+        updatedClient = { ...clientData, id: `client-${Date.now()}` };
+        setClients(prev => [updatedClient, ...prev]);
+    }
+  }, []);
+
+  const handleDeleteClient = useCallback((clientId: string) => {
+      setClients(prev => prev.filter(c => c.id !== clientId));
+      // Unlink from projects and invoices, but don't delete them
+      setProjects(prev => prev.map(p => p.clientId === clientId ? { ...p, clientId: undefined } : p));
+      setInvoices(prev => prev.map(i => i.clientId === clientId ? { ...i, clientId: undefined } : i));
+  }, []);
+
+
   const renderContent = () => {
     switch (activePage) {
       case 'Dashboard':
@@ -331,6 +367,7 @@ const App: React.FC = () => {
         return <Projects 
                   projects={projects} 
                   employees={employees}
+                  clients={clients}
                   onDeleteProject={handleDeleteProject}
                   onSaveProject={handleSaveProject}
                   onUpdateProjectDetails={handleProjectDetailsUpdate}
@@ -339,10 +376,18 @@ const App: React.FC = () => {
         return <Invoices 
                   invoices={invoices}
                   projects={projects}
+                  clients={clients}
                   onSave={handleSaveInvoice}
                   onDelete={handleDeleteInvoice}
                   onReceivePayment={handleReceivePayment}
+                  onSendReminder={handleSendReminder}
                />;
+      case 'People':
+        return <Clients 
+                  clients={clients}
+                  onSaveClient={handleSaveClient}
+                  onDeleteClient={handleDeleteClient}
+                />;
       case 'Human Resources':
         return <HumanResources 
                   employees={employees} 

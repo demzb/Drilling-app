@@ -174,6 +174,7 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
             <td style="width: 50%; text-align: right; vertical-align: top;">
               <p style="margin: 0;"><span style="font-weight: bold;">Payment Date:</span> ${payment.date}</p>
               <p style="margin: 0;"><span style="font-weight: bold;">Payment Method:</span> ${payment.method}</p>
+              ${payment.checkNumber ? `<p style="margin: 0;"><span style="font-weight: bold;">Check Number:</span> ${payment.checkNumber}</p>` : ''}
             </td>
           </tr>
       </table>
@@ -189,7 +190,7 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
       <table style="width: 100%; border-collapse: collapse; margin-top: 30px;">
           <thead>
               <tr>
-                  <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">For Invoice</th>
+                  <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">Description</th>
                   <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: right;">Invoice Total</th>
                   <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: right;">Balance Due</th>
               </tr>
@@ -197,8 +198,8 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
           <tbody>
               <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                      ${invoice.invoiceNumber}<br/>
-                      <span style="font-size: 10px; color: #555;">${invoice.projectName || ''}</span>
+                      Invoice: ${invoice.invoiceNumber}<br/>
+                      ${invoice.projectName ? `<span style="font-size: 11px; color: #555;">Project: ${invoice.projectName}</span>` : ''}
                   </td>
                   <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">GMD ${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                   <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">GMD ${balanceDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>

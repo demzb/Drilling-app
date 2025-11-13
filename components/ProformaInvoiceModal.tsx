@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, Payment } from '../types';
+import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, Payment, Client } from '../types';
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -8,9 +8,10 @@ interface InvoiceModalProps {
   invoiceToEdit: Invoice | null;
   nextInvoiceNumber: string;
   projects: Project[];
+  clients: Client[];
 }
 
-const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects }) => {
+const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
   const getInitialState = () => {
     if (invoiceToEdit) {
       return { 
@@ -20,6 +21,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
     }
     return {
       invoiceNumber: nextInvoiceNumber,
+      clientId: undefined,
       clientName: '',
       clientAddress: '',
       date: new Date().toISOString().split('T')[0],
@@ -62,12 +64,28 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedProjectId = e.target.value;
       const selectedProject = projects.find(p => p.id === selectedProjectId);
+      const projectClient = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
+
       setInvoice({
           ...invoice,
           projectId: selectedProjectId || undefined,
           projectName: selectedProject ? selectedProject.name : undefined,
-          clientName: selectedProject ? selectedProject.clientName : invoice.clientName,
+          // If project is selected, auto-select client
+          clientId: projectClient ? projectClient.id : invoice.clientId,
+          clientName: projectClient ? projectClient.name : (selectedProject ? selectedProject.clientName : invoice.clientName),
+          clientAddress: projectClient ? projectClient.address : invoice.clientAddress,
           boreholeType: selectedProject ? (selectedProject.boreholeType || BoreholeType.SOLAR_MEDIUM) : invoice.boreholeType,
+      });
+  };
+
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedClientId = e.target.value;
+      const selectedClient = clients.find(c => c.id === selectedClientId);
+      setInvoice({
+          ...invoice,
+          clientId: selectedClientId || undefined,
+          clientName: selectedClient ? selectedClient.name : '',
+          clientAddress: selectedClient ? selectedClient.address : '',
       });
   };
   
@@ -95,6 +113,10 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   };
 
   const handleSave = () => {
+    if (!invoice.clientId) {
+        alert("Please select a client for the invoice.");
+        return;
+    }
     onSave(invoice);
   };
   
@@ -134,12 +156,16 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name</label>
-                <input type="text" name="clientName" value={invoice.clientName} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., John Doe" required/>
+                <label className="block text-sm font-medium text-gray-700">Client</label>
+                <select name="clientId" value={invoice.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!!invoice.projectId}>
+                    <option value="">Select a client...</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                {invoice.projectId && <p className="text-xs text-gray-500 mt-1">Client is linked from the selected project.</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Client Address</label>
-              <textarea name="clientAddress" value={invoice.clientAddress} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., 123 Main St, City, Country"></textarea>
+              <textarea name="clientAddress" value={invoice.clientAddress} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Client address will populate here"></textarea>
             </div>
           </div>
 

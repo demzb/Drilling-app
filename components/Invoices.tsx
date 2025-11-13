@@ -1,25 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment } from '../types';
+import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment, Client, PaymentMethod } from '../types';
 import InvoiceModal from './ProformaInvoiceModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import ConfirmationModal from './ConfirmationModal';
 import InvoicePaymentModal from './InvoicePaymentModal';
 import PaymentHistoryModal from './PaymentHistoryModal';
+import ReminderModal from './ReminderModal';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
 
 interface InvoicesProps {
   invoices: Invoice[];
   projects: Project[];
+  clients: Client[];
   onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string; payments?: Payment[] }) => void;
   onDelete: (invoiceId: string) => void;
   onReceivePayment: (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => void;
+  onSendReminder: (invoiceId: string) => void;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelete, onReceivePayment }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment, onSendReminder }) => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+    const [isReminderModalOpen, setIsReminderModalOpen] = useState<boolean>(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [typeFilter, setTypeFilter] = useState<string>('All');
@@ -57,16 +61,22 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
         setIsPaymentModalOpen(true);
     };
 
-    const handleSavePayment = (paymentAmount: number) => {
+    const handleSavePayment = (details: { amount: number, method: PaymentMethod, checkNumber?: string }) => {
         if (!selectedInvoice) return;
         const paymentDetails: Omit<Payment, 'id'> = {
             date: new Date().toISOString().split('T')[0],
-            amount: paymentAmount,
-            method: 'Unspecified' // Or get from modal
+            amount: details.amount,
+            method: details.method,
+            checkNumber: details.checkNumber,
         };
         onReceivePayment(selectedInvoice.id, paymentDetails);
         setIsPaymentModalOpen(false);
         setSelectedInvoice(null);
+    };
+
+    const handleOpenReminderModal = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setIsReminderModalOpen(true);
     };
     
     const handleOpenCreateModal = () => {
@@ -168,6 +178,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                 onSave={handleSaveInvoice}
                 nextInvoiceNumber={getNextInvoiceNumber()}
                 projects={projects}
+                clients={clients}
                 invoiceToEdit={selectedInvoice}
             />
             {selectedInvoice && (
@@ -189,6 +200,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                 <PaymentHistoryModal
                     isOpen={isHistoryModalOpen}
                     onClose={() => { setIsHistoryModalOpen(false); setSelectedInvoice(null); }}
+                    invoice={selectedInvoice}
+                />
+            )}
+            {selectedInvoice && (
+                <ReminderModal
+                    isOpen={isReminderModalOpen}
+                    onClose={() => { setIsReminderModalOpen(false); setSelectedInvoice(null); }}
+                    onSend={onSendReminder}
                     invoice={selectedInvoice}
                 />
             )}
@@ -275,15 +294,28 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                                          <span className={`px-3 py-1 rounded-md text-xs font-semibold tracking-wide uppercase ${getStatusColor(invoice.status)}`}>
                                             {invoice.status}
                                         </span>
+                                        {invoice.lastReminderSent && (
+                                            <p className="text-xs text-gray-400 mt-1" title={`Last reminder sent on ${invoice.lastReminderSent}`}>
+                                                Reminded
+                                            </p>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                       <div className="flex justify-center items-center space-x-2">
+                                        <button onClick={() => handleViewDetails(invoice)} className="font-medium text-blue-600 hover:underline">View</button>
+                                        <button onClick={() => handleOpenEditModal(invoice)} className="font-medium text-yellow-600 hover:underline">Edit</button>
                                         {invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.DRAFT && (
                                             <button onClick={() => handleOpenPaymentModal(invoice)} className="font-medium text-green-600 hover:underline">Pay</button>
                                         )}
+                                        <button 
+                                            onClick={() => handleOpenReminderModal(invoice)}
+                                            className={`font-medium ${invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.DRAFT ? 'text-gray-400 cursor-not-allowed' : 'text-cyan-600 hover:underline'}`}
+                                            disabled={invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.DRAFT}
+                                            title={invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.DRAFT ? "Cannot send reminder" : "Send payment reminder"}
+                                        >
+                                            Remind
+                                        </button>
                                         <button onClick={() => handleOpenHistoryModal(invoice)} className="font-medium text-purple-600 hover:underline">Payments</button>
-                                        <button onClick={() => handleViewDetails(invoice)} className="font-medium text-blue-600 hover:underline">View</button>
-                                        <button onClick={() => handleOpenEditModal(invoice)} className="font-medium text-yellow-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDeleteRequest(invoice)} className="font-medium text-red-600 hover:underline">Delete</button>
                                       </div>
                                     </td>

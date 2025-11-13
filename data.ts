@@ -1,4 +1,31 @@
-import { Project, Invoice, Employee, Transaction, ProjectStatus, EmployeeStatus, InvoiceStatus, InvoiceType, BoreholeType, TransactionType, Payment } from './types';
+import { Project, Invoice, Employee, Transaction, ProjectStatus, EmployeeStatus, InvoiceStatus, InvoiceType, BoreholeType, TransactionType, Payment, Client, PaymentMethod } from './types';
+
+export const initialClients: Client[] = [
+    {
+        id: 'client-1',
+        name: 'Bijilo VDC',
+        contactPerson: 'Village Alkalo',
+        email: 'bijilo.vdc@gambia.gov',
+        phone: '446-0001',
+        address: 'Bijilo Community Center, WCR',
+    },
+    {
+        id: 'client-2',
+        name: 'Mr. Ebrima Ceesay',
+        contactPerson: 'Ebrima Ceesay',
+        email: 'e.ceesay@personal.com',
+        phone: '778-1234',
+        address: 'Kotu Layout, KMC',
+    },
+    {
+        id: 'client-3',
+        name: 'Sanyang Agricultural Co-op',
+        contactPerson: 'Fatou Bojang',
+        email: 'sanyang.agri@coop.gm',
+        phone: '990-5555',
+        address: 'Sanyang, West Coast Region',
+    }
+];
 
 export const initialEmployees: Employee[] = [
     { id: 1, name: 'Yusupha Sambou', gender: 'Male', role: 'Lead Driller', email: 'yusupha@drillsoft.com', phone: '352-2014', startDate: '2020-01-15', avatarUrl: 'https://i.pravatar.cc/150?u=1', status: EmployeeStatus.ACTIVE },
@@ -12,6 +39,7 @@ export const initialProjects: Project[] = [
     {
         id: 'proj-1',
         name: 'Bijilo Community Borehole',
+        clientId: 'client-1',
         clientName: 'Bijilo VDC',
         location: 'Bijilo, West Coast Region',
         startDate: '2024-05-10',
@@ -37,6 +65,7 @@ export const initialProjects: Project[] = [
     {
         id: 'proj-2',
         name: 'Kotu Residence Well',
+        clientId: 'client-2',
         clientName: 'Mr. Ebrima Ceesay',
         location: 'Kotu, Kanifing Municipality',
         startDate: '2024-07-01',
@@ -55,6 +84,7 @@ export const initialProjects: Project[] = [
      {
         id: 'proj-3',
         name: 'Farm Irrigation System',
+        clientId: 'client-3',
         clientName: 'Sanyang Agricultural Co-op',
         location: 'Sanyang, West Coast Region',
         startDate: '2024-08-01',
@@ -73,6 +103,7 @@ export const initialInvoices: Invoice[] = [
     {
         id: 'inv-1',
         invoiceNumber: 'INV-2024-001',
+        clientId: 'client-1',
         clientName: 'Bijilo VDC',
         clientAddress: 'Bijilo Community Center, WCR',
         date: '2024-05-05',
@@ -84,12 +115,13 @@ export const initialInvoices: Invoice[] = [
         invoiceType: InvoiceType.INVOICE,
         projectId: 'proj-1',
         projectName: 'Bijilo Community Borehole',
-        payments: [{id: 'pay-1', date: '2024-06-15', amount: 350000, method: 'Bank Transfer'}],
+        payments: [{id: 'pay-1', date: '2024-06-15', amount: 350000, method: PaymentMethod.BANK_TRANSFER}],
         boreholeType: BoreholeType.SOLAR_LARGE,
     },
      {
         id: 'inv-2',
         invoiceNumber: 'INV-2024-002',
+        clientId: 'client-2',
         clientName: 'Mr. Ebrima Ceesay',
         clientAddress: 'Kotu Layout, KMC',
         date: '2024-06-25',
@@ -101,7 +133,7 @@ export const initialInvoices: Invoice[] = [
         invoiceType: InvoiceType.PROFORMA,
         projectId: 'proj-2',
         projectName: 'Kotu Residence Well',
-        payments: [{ id: 'pay-2', date: '2024-06-28', amount: 165000, method: 'Cash'}], // 75% of 220,000
+        payments: [{ id: 'pay-2', date: '2024-06-28', amount: 165000, method: PaymentMethod.CASH}], // 75% of 220,000
         boreholeType: BoreholeType.ELECTRIC_MEDIUM,
     }
 ];

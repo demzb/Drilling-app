@@ -74,17 +74,35 @@ export enum BoreholeType {
   ELECTRIC_LARGE = 'Electric Submersible (Large)',
 }
 
+export enum PaymentMethod {
+  CASH = 'Cash',
+  BANK_TRANSFER = 'Bank Transfer',
+  CHECK = 'Check',
+  UNSPECIFIED = 'Unspecified',
+}
+
 export interface Payment {
   id: string;
   date: string;
   amount: number;
-  method: string;
+  method: PaymentMethod;
   notes?: string;
+  checkNumber?: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  email: string;
+  phone: string;
+  address: string;
 }
 
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  clientId?: string;
   clientName: string;
   clientAddress: string;
   date: string;
@@ -98,6 +116,7 @@ export interface Invoice {
   projectName?: string; // For easy display
   payments: Payment[];
   boreholeType?: BoreholeType;
+  lastReminderSent?: string;
 }
 
 // Project Management Types
@@ -124,6 +143,7 @@ export interface OtherExpense {
 export interface Project {
   id: string;
   name: string;
+  clientId?: string;
   clientName: string;
   location: string;
   startDate: string;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Invoice, Payment } from '../types';
 import ReceiptModal from './ReceiptModal';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
+import { generateReceiptHtml } from '../utils/exportUtils';
 
 interface PaymentHistoryModalProps {
   isOpen: boolean;
@@ -22,6 +23,25 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ isOpen, onClo
   const handleViewReceipt = (payment: Payment) => {
     setSelectedPayment(payment);
     setIsReceiptModalOpen(true);
+  };
+
+  const handleExportToWord = (payment: Payment) => {
+    const htmlContent = generateReceiptHtml(invoice, payment);
+    
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
+          "xmlns:w='urn:schemas-microsoft-com:office:word' "+
+          "xmlns='http://www.w3.org/TR/REC-html40'>"+
+          "<head><meta charset='utf-8'><title>Export HTML to Word Document</title></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + htmlContent + footer;
+
+    const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+    const fileDownload = document.createElement("a");
+    document.body.appendChild(fileDownload);
+    fileDownload.href = source;
+    fileDownload.download = `Receipt_${invoice.invoiceNumber}_${payment.id}.doc`;
+    fileDownload.click();
+    document.body.removeChild(fileDownload);
   };
 
   return (
@@ -75,10 +95,18 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ isOpen, onClo
                   {invoice.payments.length > 0 ? invoice.payments.map((payment) => (
                     <tr key={payment.id} className="bg-white border-b hover:bg-gray-50">
                       <td className="px-6 py-4">{payment.date}</td>
-                      <td className="px-6 py-4">{payment.method}</td>
+                      <td className="px-6 py-4">
+                        {payment.method}
+                        {payment.checkNumber && (
+                            <span className="block text-xs text-gray-400 mt-1">
+                                Check #: {payment.checkNumber}
+                            </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right font-medium text-green-700">GMD {payment.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td className="px-6 py-4 text-center">
-                        <button onClick={() => handleViewReceipt(payment)} className="font-medium text-blue-600 hover:underline">View Receipt</button>
+                      <td className="px-6 py-4 text-center space-x-4">
+                        <button onClick={() => handleViewReceipt(payment)} className="font-medium text-blue-600 hover:underline">Preview Receipt</button>
+                        <button onClick={() => handleExportToWord(payment)} className="font-medium text-green-600 hover:underline">Export to Word</button>
                       </td>
                     </tr>
                   )) : (

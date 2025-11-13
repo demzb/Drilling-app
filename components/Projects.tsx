@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Project, ProjectStatus, Employee } from '../types';
+import { Project, ProjectStatus, Employee, Client } from '../types';
 import ProjectModal from './ProjectModal';
 import ProjectDetailModal from './ProjectDetailModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -7,12 +7,13 @@ import ConfirmationModal from './ConfirmationModal';
 interface ProjectsProps {
   projects: Project[];
   employees: Employee[];
+  clients: Client[];
   onDeleteProject: (projectId: string) => void;
   onSaveProject: (project: Omit<Project, 'id'> & { id?: string }) => void;
   onUpdateProjectDetails: (project: Project) => void;
 }
 
-const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProject, onSaveProject, onUpdateProjectDetails }) => {
+const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDeleteProject, onSaveProject, onUpdateProjectDetails }) => {
     const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -77,6 +78,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProjec
                 onClose={() => setIsProjectModalOpen(false)}
                 onSave={handleSaveProjectAndCloseModal}
                 project={selectedProject}
+                clients={clients}
             />
             {selectedProject && (
                 <ProjectDetailModal

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Invoice } from '../types';
+import { Invoice, PaymentMethod } from '../types';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
 import ConfirmationModal from './ConfirmationModal';
 
 interface InvoicePaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (paymentAmount: number) => void;
+  onSave: (details: { amount: number; method: PaymentMethod; checkNumber?: string }) => void;
   invoice: Invoice;
 }
 
@@ -16,11 +16,15 @@ const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({ isOpen, onClo
     const balanceDue = totalAmount - totalPaid;
     
     const [amount, setAmount] = useState('0');
+    const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+    const [checkNumber, setCheckNumber] = useState('');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setAmount(balanceDue.toFixed(2));
+            setMethod(PaymentMethod.CASH);
+            setCheckNumber('');
         }
     }, [isOpen, balanceDue]);
     
@@ -32,7 +36,15 @@ const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({ isOpen, onClo
             alert('Please enter a valid, positive payment amount.');
             return;
         }
-        onSave(numberAmount);
+        if (method === PaymentMethod.CHECK && !checkNumber.trim()) {
+            alert('Please enter a check number for check payments.');
+            return;
+        }
+        onSave({ 
+            amount: numberAmount, 
+            method,
+            checkNumber: method === PaymentMethod.CHECK ? checkNumber.trim() : undefined
+        });
     }
 
     const handleSave = (e: React.FormEvent) => {
@@ -119,6 +131,34 @@ const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({ isOpen, onClo
                                 <button type="button" onClick={() => handlePercentageClick(0.75)} className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors">75%</button>
                                 <button type="button" onClick={() => handlePercentageClick(1)} className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors">100%</button>
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div>
+                                <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <select 
+                                    value={method}
+                                    onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                >
+                                    {Object.values(PaymentMethod).filter(m => m !== PaymentMethod.UNSPECIFIED).map(m => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                </select>
+                           </div>
+                           {method === PaymentMethod.CHECK && (
+                               <div>
+                                    <label className="block text-sm font-medium text-gray-700">Check Number</label>
+                                    <input 
+                                        type="text" 
+                                        value={checkNumber}
+                                        onChange={(e) => setCheckNumber(e.target.value)}
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="Enter check #"
+                                        required
+                                    />
+                               </div>
+                           )}
                         </div>
                     </div>
 

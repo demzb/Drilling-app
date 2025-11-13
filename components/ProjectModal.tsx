@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Project, ProjectStatus, BoreholeType } from '../types';
+import { Project, ProjectStatus, BoreholeType, Client } from '../types';
 
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (project: Omit<Project, 'id'> & { id?: string }) => void;
   project: Project | null;
+  clients: Client[];
 }
 
 const emptyProject = {
     name: '',
+    clientId: undefined,
     clientName: '',
     location: '',
     startDate: new Date().toISOString().split('T')[0],
@@ -19,19 +21,14 @@ const emptyProject = {
     boreholeType: BoreholeType.SOLAR_MEDIUM,
 };
 
-const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, project }) => {
-  const [formData, setFormData] = useState(emptyProject);
+const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, project, clients }) => {
+  const [formData, setFormData] = useState<any>(emptyProject);
 
   useEffect(() => {
     if (project) {
       setFormData({
-        name: project.name,
-        clientName: project.clientName,
-        location: project.location,
-        startDate: project.startDate,
+        ...project,
         endDate: project.endDate || '',
-        status: project.status,
-        totalBudget: project.totalBudget,
         boreholeType: project.boreholeType || BoreholeType.SOLAR_MEDIUM,
       });
     } else {
@@ -45,11 +42,21 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+  
+  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedClientId = e.target.value;
+    const selectedClient = clients.find(c => c.id === selectedClientId);
+    setFormData(prev => ({
+        ...prev,
+        clientId: selectedClientId || undefined,
+        clientName: selectedClient ? selectedClient.name : '',
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.clientName) {
-      alert('Please fill in at least Project Name and Client Name.');
+    if (!formData.name || !formData.clientId) {
+      alert('Please fill in Project Name and select a Client.');
       return;
     }
     
@@ -84,8 +91,11 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
                     <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required/>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Client Name</label>
-                    <input type="text" name="clientName" value={formData.clientName} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required/>
+                    <label className="block text-sm font-medium text-gray-700">Client</label>
+                    <select name="clientId" value={formData.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                      <option value="">Select a client...</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                 </div>
             </div>
              <div>
