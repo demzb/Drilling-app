@@ -1,4 +1,4 @@
-import { Invoice, InvoiceType, InvoiceStatus, Payment } from '../types';
+import { Invoice, InvoiceType, InvoiceStatus, Payment, Project } from '../types';
 import { numberToWords } from './numberToWords';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './invoiceUtils';
 
@@ -212,4 +212,173 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
       </div>
     </div>
   `;
+};
+
+const escapeCsvCell = (cellData: any): string => {
+    const stringData = String(cellData ?? '');
+    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
+        return `"${stringData.replace(/"/g, '""')}"`;
+    }
+    return stringData;
+};
+
+export const exportProjectsToCSV = (projects: Project[]) => {
+    const headers = [
+        'ID', 'Name', 'Client', 'Location', 'Start Date', 'End Date',
+        'Status', 'Borehole Type', 'Total Budget', 'Amount Received'
+    ];
+
+    const rows = projects.map(p => [
+        p.id, p.name, p.clientName, p.location, p.startDate, p.endDate || 'N/A',
+        p.status, p.boreholeType || 'N/A', p.totalBudget, p.amountReceived
+    ].map(escapeCsvCell).join(','));
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "projects_export.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+export const printProjectsList = (projects: Project[]) => {
+    const tableRows = projects.map(p => `
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${p.name}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${p.clientName}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${p.status}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.totalBudget.toLocaleString()}</td>
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.amountReceived.toLocaleString()}</td>
+        </tr>
+    `).join('');
+
+    const htmlContent = `
+        <html>
+            <head>
+                <title>Projects List</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    table { width: 100%; border-collapse: collapse; }
+                    h1 { text-align: center; }
+                </style>
+            </head>
+            <body>
+                <h1>Projects List</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left; background-color: #f2f2f2;">Project Name</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left; background-color: #f2f2f2;">Client</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left; background-color: #f2f2f2;">Status</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right; background-color: #f2f2f2;">Budget</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right; background-color: #f2f2f2;">Received</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </body>
+        </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    }
+};
+
+export const exportProjectDetailToCSV = (project: Project) => {
+    let csvContent = '';
+
+    const addSection = (title: string, headers: string[], data: string[][]) => {
+        csvContent += `\n${title}\n`;
+        csvContent += headers.join(',') + '\n';
+        data.forEach(row => {
+            csvContent += row.map(escapeCsvCell).join(',') + '\n';
+        });
+    };
+
+    // Section 1: Project Summary
+    const summaryData = [
+        ['Project Name', project.name],
+        ['Client Name', project.clientName],
+        ['Location', project.location],
+        ['Start Date', project.startDate],
+        ['End Date', project.endDate || 'N/A'],
+        ['Status', project.status],
+        ['Borehole Type', project.boreholeType || 'N/A'],
+    ];
+    csvContent += 'Project Summary\n';
+    summaryData.forEach(row => {
+        csvContent += row.map(escapeCsvCell).join(',') + '\n';
+    });
+
+    // Section 2: Financials
+    const totalMaterialCost = project.materials.reduce((acc, mat) => acc + (mat.quantity * mat.unitCost), 0);
+    const totalStaffCost = project.staff.reduce((acc, s) => acc + s.paymentAmount, 0);
+    const totalOtherCost = project.otherExpenses.reduce((acc, exp) => acc + exp.amount, 0);
+    const totalProjectCost = totalMaterialCost + totalStaffCost + totalOtherCost;
+    const netProfit = project.amountReceived - totalProjectCost;
+    const financialData = [
+        ['Total Budget', project.totalBudget],
+        ['Amount Received', project.amountReceived],
+        ['Material Costs', totalMaterialCost],
+        ['Staff Costs', totalStaffCost],
+        ['Other Expenses', totalOtherCost],
+        ['Total Costs', totalProjectCost],
+        ['Net Profit/Loss', netProfit],
+    ];
+    csvContent += '\nFinancial Summary\n';
+    financialData.forEach(row => {
+        csvContent += row.map(escapeCsvCell).join(',') + '\n';
+    });
+
+    // Section 3: Materials
+    if (project.materials.length > 0) {
+        addSection(
+            'Materials',
+            ['Name', 'Quantity', 'Unit Cost', 'Total Cost'],
+            project.materials.map(m => [m.name, m.quantity, m.unitCost, m.quantity * m.unitCost].map(String))
+        );
+    }
+
+    // Section 4: Staff
+    if (project.staff.length > 0) {
+        addSection(
+            'Assigned Staff',
+            ['Name', 'Role', 'Payment'],
+            project.staff.map(s => [s.employeeName, s.projectRole, s.paymentAmount].map(String))
+        );
+    }
+    
+    // Section 5: Other Expenses
+    if (project.otherExpenses.length > 0) {
+        addSection(
+            'Other Expenses',
+            ['Description', 'Amount'],
+            project.otherExpenses.map(e => [e.description, e.amount].map(String))
+        );
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `project_${project.id}_details.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };

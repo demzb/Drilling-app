@@ -3,6 +3,7 @@ import { Project, ProjectStatus, Employee, Client } from '../types';
 import ProjectModal from './ProjectModal';
 import ProjectDetailModal from './ProjectDetailModal';
 import ConfirmationModal from './ConfirmationModal';
+import { exportProjectsToCSV, printProjectsList } from '../utils/exportUtils';
 
 interface ProjectsProps {
   projects: Project[];
@@ -104,12 +105,31 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
             />
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-800">Projects Overview</h2>
-                <button
-                    onClick={handleOpenAddModal}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors shadow"
-                >
-                    Add New Project
-                </button>
+                <div className="flex items-center space-x-4">
+                    <div>
+                        <span className="text-sm font-medium text-gray-600 mr-2">Export:</span>
+                        <button
+                            onClick={() => exportProjectsToCSV(projects)}
+                            className="bg-green-600 text-white px-3 py-1.5 text-sm rounded-l-md hover:bg-green-700 transition-colors shadow"
+                            title="Export list to CSV"
+                        >
+                            CSV
+                        </button>
+                        <button
+                            onClick={() => printProjectsList(projects)}
+                            className="bg-red-600 text-white px-3 py-1.5 text-sm rounded-r-md hover:bg-red-700 transition-colors shadow border-l border-red-700"
+                            title="Export list to PDF"
+                        >
+                            PDF
+                        </button>
+                    </div>
+                    <button
+                        onClick={handleOpenAddModal}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors shadow"
+                    >
+                        Add New Project
+                    </button>
+                </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
