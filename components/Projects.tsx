@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Project, ProjectStatus, Employee } from '../types';
 import ProjectModal from './ProjectModal';
 import ProjectDetailModal from './ProjectDetailModal';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectsProps {
   projects: Project[];
@@ -15,6 +16,8 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProjec
     const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
     const handleOpenAddModal = () => {
         setSelectedProject(null);
@@ -43,13 +46,20 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProjec
             setSelectedProject(updatedProject);
         }
     };
-
-    const handleDeleteProjectAndCloseModal = (projectId: string) => {
-        onDeleteProject(projectId);
-        setIsDetailModalOpen(false);
-        setSelectedProject(null);
-    };
     
+    const handleDeleteRequest = (project: Project) => {
+        setProjectToDelete(project);
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (projectToDelete) {
+            onDeleteProject(projectToDelete.id);
+            setIsConfirmModalOpen(false);
+            setProjectToDelete(null);
+        }
+    };
+
     const getStatusColor = (status: ProjectStatus) => {
         switch (status) {
             case ProjectStatus.COMPLETED: return 'border-green-500';
@@ -75,10 +85,21 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProjec
                     project={selectedProject}
                     onUpdateProject={handleUpdateProjectDetailsAndRefresh}
                     employees={employees}
-                    onDeleteProject={handleDeleteProjectAndCloseModal}
                     onEditProject={handleOpenEditModal}
                 />
             )}
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Project"
+                message={
+                    <>
+                        Are you sure you want to delete the project "<strong>{projectToDelete?.name}</strong>"? 
+                        This will remove all associated expenses and unlink any invoices. This action cannot be undone.
+                    </>
+                }
+            />
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-800">Projects Overview</h2>
                 <button
@@ -122,8 +143,9 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, onDeleteProjec
                                </div>
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-5 py-3 text-right">
+                        <div className="bg-gray-50 px-5 py-3 text-right space-x-4">
                              <button onClick={() => handleOpenDetailModal(project)} className="font-medium text-blue-600 hover:underline">View Details</button>
+                             <button onClick={() => handleDeleteRequest(project)} className="font-medium text-red-600 hover:underline">Delete</button>
                         </div>
                     </div>
                 ))}

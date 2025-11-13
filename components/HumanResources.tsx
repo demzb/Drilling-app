@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Employee, EmployeeStatus } from '../types';
 import EmployeeModal from './EmployeeModal';
+import ConfirmationModal from './ConfirmationModal';
 
 interface HumanResourcesProps {
   employees: Employee[];
@@ -11,6 +12,8 @@ interface HumanResourcesProps {
 const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmployee, onDeleteEmployee }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   const handleOpenAddModal = () => {
     setEmployeeToEdit(null);
@@ -32,6 +35,19 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
     setIsModalOpen(false);
   };
   
+  const handleDeleteRequest = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (employeeToDelete) {
+      onDeleteEmployee(employeeToDelete.id);
+      setIsConfirmModalOpen(false);
+      setEmployeeToDelete(null);
+    }
+  };
+
   return (
     <>
       <EmployeeModal 
@@ -39,6 +55,17 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveEmployee}
         employeeToEdit={employeeToEdit}
+      />
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Employee"
+        message={
+          <>
+            Are you sure you want to delete "<strong>{employeeToDelete?.name}</strong>"? This will remove them from all assigned projects and cannot be undone.
+          </>
+        }
       />
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="flex justify-between items-center mb-6">
@@ -84,7 +111,7 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
                   </td>
                   <td className="px-6 py-4 text-right space-x-4">
                     <button onClick={() => handleOpenEditModal(employee)} className="font-medium text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => onDeleteEmployee(employee.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                    <button onClick={() => handleDeleteRequest(employee)} className="font-medium text-red-600 hover:underline">Delete</button>
                   </td>
                 </tr>
               )) : (

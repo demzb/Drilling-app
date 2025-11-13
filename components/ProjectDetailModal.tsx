@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Project, Material, Employee, StaffAssignment, OtherExpense, EmployeeStatus } from '../types';
+import ConfirmationModal from './ConfirmationModal';
 
 interface ProjectDetailModalProps {
   isOpen: boolean;
@@ -7,7 +8,6 @@ interface ProjectDetailModalProps {
   project: Project;
   onUpdateProject: (project: Project) => void;
   employees: Employee[];
-  onDeleteProject: (projectId: string) => void;
   onEditProject: (project: Project) => void;
 }
 
@@ -16,7 +16,7 @@ const emptyStaffAssignment = { employeeId: '', projectRole: '', paymentAmount: '
 const emptyExpense = { description: '', amount: '' };
 
 
-const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose, project, onUpdateProject, employees, onDeleteProject, onEditProject }) => {
+const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose, project, onUpdateProject, employees, onEditProject }) => {
   const [newMaterial, setNewMaterial] = useState(emptyMaterial);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   
@@ -25,6 +25,18 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
 
   const [newExpense, setNewExpense] = useState(emptyExpense);
   const [editingExpense, setEditingExpense] = useState<OtherExpense | null>(null);
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: React.ReactNode;
+    onConfirm: (() => void) | null;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
 
   useEffect(() => {
     if (!isOpen) {
@@ -64,13 +76,18 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
     return activeEmployees.filter(emp => !assignedIds.has(emp.id));
   }, [employees, project.staff, editingStaff]);
 
-  const handleDeleteClick = () => {
-    if (window.confirm('Are you sure you want to delete this project? This will remove all associated expenses and unlink any invoices. This action cannot be undone.')) {
-        onDeleteProject(project.id);
-    }
-  };
-
   if (!isOpen) return null;
+
+  const closeConfirmation = () => {
+    setConfirmState({ isOpen: false, title: '', message: '', onConfirm: null });
+  };
+  
+  const handleConfirm = () => {
+    if (confirmState.onConfirm) {
+        confirmState.onConfirm();
+    }
+    closeConfirmation();
+  }
 
   // --- Material Handlers ---
   const handleMaterialChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,11 +129,16 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
     handleCancelEditMaterial();
   };
 
-  const handleDeleteMaterial = (materialId: string) => {
-    if (window.confirm('Are you sure you want to delete this material?')) {
-        const updatedMaterials = project.materials.filter(mat => mat.id !== materialId);
+  const handleDeleteMaterial = (material: Material) => {
+     setConfirmState({
+      isOpen: true,
+      title: 'Delete Material',
+      message: <>Are you sure you want to delete "<strong>{material.name}</strong>"?</>,
+      onConfirm: () => {
+        const updatedMaterials = project.materials.filter(mat => mat.id !== material.id);
         onUpdateProject({ ...project, materials: updatedMaterials });
-    }
+      }
+    });
   };
   
   // --- Staff Handlers ---
@@ -176,11 +198,16 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
     handleCancelEditStaff();
   };
   
-  const handleRemoveStaff = (employeeId: number) => {
-    if (window.confirm('Are you sure you want to remove this staff member from the project?')) {
-        const updatedStaff = project.staff.filter(s => s.employeeId !== employeeId);
+  const handleRemoveStaff = (staff: StaffAssignment) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Remove Staff',
+      message: <>Are you sure you want to remove "<strong>{staff.employeeName}</strong>" from this project?</>,
+      onConfirm: () => {
+        const updatedStaff = project.staff.filter(s => s.employeeId !== staff.employeeId);
         onUpdateProject({ ...project, staff: updatedStaff });
-    }
+      }
+    });
   };
 
   // --- Other Expense Handlers ---
@@ -220,15 +247,27 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
     handleCancelEditExpense();
   };
 
-  const handleDeleteExpense = (expenseId: string) => {
-    if (window.confirm('Are you sure you want to delete this expense?')) {
-      const updatedExpenses = project.otherExpenses.filter(exp => exp.id !== expenseId);
-      onUpdateProject({ ...project, otherExpenses: updatedExpenses });
-    }
+  const handleDeleteExpense = (expense: OtherExpense) => {
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Expense',
+      message: <>Are you sure you want to delete the expense "<strong>{expense.description}</strong>"?</>,
+      onConfirm: () => {
+        const updatedExpenses = project.otherExpenses.filter(exp => exp.id !== expense.id);
+        onUpdateProject({ ...project, otherExpenses: updatedExpenses });
+      }
+    });
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <ConfirmationModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirmation}
+        onConfirm={handleConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+      />
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Project Details</h2>
@@ -336,7 +375,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                   <td className="px-4 py-2 text-right">GMD {mat.unitCost.toLocaleString()}</td>
                                   <td className="px-4 py-2 text-center space-x-2">
                                       <button onClick={() => handleStartEditMaterial(mat)} className="font-medium text-blue-600 hover:underline">Edit</button>
-                                      <button onClick={() => handleDeleteMaterial(mat.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                      <button onClick={() => handleDeleteMaterial(mat)} className="font-medium text-red-600 hover:underline">Delete</button>
                                   </td>
                               </tr>
                           ))}
@@ -390,7 +429,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                   <td className="px-4 py-2 text-right">GMD {s.paymentAmount.toLocaleString()}</td>
                                   <td className="px-4 py-2 text-center space-x-2">
                                      <button onClick={() => handleStartEditStaff(s)} className="font-medium text-blue-600 hover:underline">Edit</button>
-                                     <button onClick={() => handleRemoveStaff(s.employeeId)} className="font-medium text-red-600 hover:underline">Remove</button>
+                                     <button onClick={() => handleRemoveStaff(s)} className="font-medium text-red-600 hover:underline">Remove</button>
                                   </td>
                               </tr>
                           ))}
@@ -448,7 +487,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                   <td className="px-4 py-2 text-right">GMD {exp.amount.toLocaleString()}</td>
                                   <td className="px-4 py-2 text-center space-x-2">
                                       <button onClick={() => handleStartEditExpense(exp)} className="font-medium text-blue-600 hover:underline">Edit</button>
-                                      <button onClick={() => handleDeleteExpense(exp.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                      <button onClick={() => handleDeleteExpense(exp)} className="font-medium text-red-600 hover:underline">Delete</button>
                                   </td>
                               </tr>
                           ))}
@@ -478,13 +517,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
             </div>
         </div>
 
-        <div className="flex justify-between items-center p-4 bg-gray-50 border-t">
-          <button
-              onClick={handleDeleteClick}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 transition-colors"
-          >
-              Delete Project
-          </button>
+        <div className="flex justify-end items-center p-4 bg-gray-50 border-t">
           <div className="flex items-center space-x-2">
             <button
                 onClick={() => onEditProject(project)}

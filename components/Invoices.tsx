@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType } from '../types';
 import InvoiceModal from './ProformaInvoiceModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
+import ConfirmationModal from './ConfirmationModal';
 
 interface InvoicesProps {
   invoices: Invoice[];
@@ -17,6 +18,9 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [typeFilter, setTypeFilter] = useState<string>('All');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+
 
     const getNextInvoiceNumber = () => {
         const prefix = 'INV';
@@ -58,11 +62,17 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
         setIsInvoiceModalOpen(true);
     };
 
-    const handleDeleteInvoice = (invoiceId: string) => {
-        if (!window.confirm("Are you sure you want to delete this invoice? This action cannot be undone.")) {
-            return;
+    const handleDeleteRequest = (invoice: Invoice) => {
+        setInvoiceToDelete(invoice);
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (invoiceToDelete) {
+            onDelete(invoiceToDelete.id);
+            setIsConfirmModalOpen(false);
+            setInvoiceToDelete(null);
         }
-        onDelete(invoiceId);
     };
     
     const handleViewDetails = (invoice: Invoice) => {
@@ -78,13 +88,13 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
     
     const getStatusColor = (status: InvoiceStatus) => {
         switch (status) {
-            case InvoiceStatus.PAID: return 'bg-green-100 text-green-800';
-            case InvoiceStatus.PARTIALLY_PAID: return 'bg-yellow-100 text-yellow-800';
-            case InvoiceStatus.AWAITING_FINAL_PAYMENT: return 'bg-purple-100 text-purple-800';
-            case InvoiceStatus.SENT: return 'bg-blue-100 text-blue-800';
-            case InvoiceStatus.OVERDUE: return 'bg-red-100 text-red-800';
+            case InvoiceStatus.PAID: return 'bg-green-500 text-white';
+            case InvoiceStatus.PARTIALLY_PAID: return 'bg-yellow-500 text-white';
+            case InvoiceStatus.AWAITING_FINAL_PAYMENT: return 'bg-purple-500 text-white';
+            case InvoiceStatus.SENT: return 'bg-blue-500 text-white';
+            case InvoiceStatus.OVERDUE: return 'bg-red-500 text-white';
             case InvoiceStatus.DRAFT:
-            default: return 'bg-gray-100 text-gray-800';
+            default: return 'bg-gray-400 text-white';
         }
     };
 
@@ -146,6 +156,17 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                     isProjectCompleted={projects.find(p => p.id === selectedInvoice.projectId)?.status === ProjectStatus.COMPLETED}
                 />
             )}
+            <ConfirmationModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Invoice"
+                message={
+                    <>
+                        Are you sure you want to delete invoice "<strong>{invoiceToDelete?.invoiceNumber}</strong>"? This action cannot be undone.
+                    </>
+                }
+            />
 
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
@@ -221,7 +242,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                                         GMD {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(invoice.status)}`}>
+                                         <span className={`px-3 py-1 rounded-md text-xs font-semibold tracking-wide uppercase ${getStatusColor(invoice.status)}`}>
                                             {invoice.status}
                                         </span>
                                     </td>
@@ -231,7 +252,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                                         )}
                                         <button onClick={() => handleViewDetails(invoice)} className="font-medium text-blue-600 hover:underline">View</button>
                                         <button onClick={() => handleOpenEditModal(invoice)} className="font-medium text-yellow-600 hover:underline">Edit</button>
-                                        <button onClick={() => handleDeleteInvoice(invoice.id)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                        <button onClick={() => handleDeleteRequest(invoice)} className="font-medium text-red-600 hover:underline">Delete</button>
                                     </td>
                                 </tr>
                             )})}
