@@ -63,11 +63,11 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
 
     const getStatusColor = (status: ProjectStatus) => {
         switch (status) {
-            case ProjectStatus.COMPLETED: return 'border-green-500';
-            case ProjectStatus.IN_PROGRESS: return 'border-blue-500';
-            case ProjectStatus.ON_HOLD: return 'border-yellow-500';
+            case ProjectStatus.COMPLETED: return 'border-green-600';
+            case ProjectStatus.IN_PROGRESS: return 'border-blue-600';
+            case ProjectStatus.ON_HOLD: return 'border-amber-500';
             case ProjectStatus.PLANNED:
-            default: return 'border-gray-300';
+            default: return 'border-gray-400';
         }
     };
 

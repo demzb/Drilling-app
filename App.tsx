@@ -356,7 +356,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activePage) {
       case 'Dashboard':
-        return <Dashboard projects={projects} employees={employees} transactions={transactions} />;
+        return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
       case 'Financials':
         return <Financials 
                   transactions={transactions} 
@@ -395,7 +395,7 @@ const App: React.FC = () => {
                   onDeleteEmployee={handleDeleteEmployee} 
                />;
       default:
-        return <Dashboard projects={projects} employees={employees} transactions={transactions} />;
+        return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
     }
   };
 

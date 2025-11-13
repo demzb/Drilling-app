@@ -13,7 +13,7 @@ const Card: React.FC<CardProps> = ({ title, value, icon, change, changeType }) =
   const changeIcon = changeType === 'positive' ? '▲' : '▼';
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 flex items-start">
+    <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex items-start">
       <div className="bg-blue-100 text-blue-500 p-3 rounded-full mr-4">
         {icon}
       </div>
