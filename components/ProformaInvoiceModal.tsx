@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType } from '../types';
+import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, Payment } from '../types';
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (invoice: Omit<Invoice, 'id'> & { id?: string }) => void;
+  onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string, payments?: Payment[] }) => void;
   invoiceToEdit: Invoice | null;
   nextInvoiceNumber: string;
   projects: Project[];
@@ -31,7 +31,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       projectName: undefined,
       status: InvoiceStatus.DRAFT,
       invoiceType: InvoiceType.PROFORMA,
-      amountPaid: 0,
+      payments: [],
       boreholeType: BoreholeType.SOLAR_MEDIUM,
     };
   };
@@ -95,10 +95,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   };
 
   const handleSave = () => {
-    onSave({
-      ...invoice,
-      amountPaid: parseFloat(String(invoice.amountPaid)) || 0
-    });
+    onSave(invoice);
   };
   
   return (
@@ -187,13 +184,9 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
               <div className="space-y-2">
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Status</label>
-                      <select name="status" value={invoice.status} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                      <select name="status" value={invoice.status} onChange={handleChange} disabled={!!invoiceToEdit} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm disabled:bg-gray-100 disabled:text-gray-500">
                           {Object.values(InvoiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
-                   </div>
-                   <div className="flex items-center">
-                      <label className="text-sm font-medium text-gray-700 w-32">Amount Paid (GMD)</label>
-                      <input type="number" name="amountPaid" value={invoice.amountPaid} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0.00"/>
                    </div>
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Tax Rate (%)</label>

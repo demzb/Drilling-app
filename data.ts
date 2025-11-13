@@ -1,4 +1,4 @@
-import { Project, Invoice, Employee, Transaction, ProjectStatus, EmployeeStatus, InvoiceStatus, InvoiceType, BoreholeType, TransactionType } from './types';
+import { Project, Invoice, Employee, Transaction, ProjectStatus, EmployeeStatus, InvoiceStatus, InvoiceType, BoreholeType, TransactionType, Payment } from './types';
 
 export const initialEmployees: Employee[] = [
     { id: 1, name: 'Yusupha Sambou', gender: 'Male', role: 'Lead Driller', email: 'yusupha@drillsoft.com', phone: '352-2014', startDate: '2020-01-15', avatarUrl: 'https://i.pravatar.cc/150?u=1', status: EmployeeStatus.ACTIVE },
@@ -84,7 +84,7 @@ export const initialInvoices: Invoice[] = [
         invoiceType: InvoiceType.INVOICE,
         projectId: 'proj-1',
         projectName: 'Bijilo Community Borehole',
-        amountPaid: 350000,
+        payments: [{id: 'pay-1', date: '2024-06-15', amount: 350000, method: 'Bank Transfer'}],
         boreholeType: BoreholeType.SOLAR_LARGE,
     },
      {
@@ -101,7 +101,7 @@ export const initialInvoices: Invoice[] = [
         invoiceType: InvoiceType.PROFORMA,
         projectId: 'proj-2',
         projectName: 'Kotu Residence Well',
-        amountPaid: 165000, // 75% of 220,000
+        payments: [{ id: 'pay-2', date: '2024-06-28', amount: 165000, method: 'Cash'}], // 75% of 220,000
         boreholeType: BoreholeType.ELECTRIC_MEDIUM,
     }
 ];
@@ -110,18 +110,18 @@ export const initialInvoices: Invoice[] = [
 const autoTransactions: Transaction[] = [];
 
 initialInvoices.forEach(inv => {
-    if (inv.amountPaid > 0) {
+    inv.payments.forEach(payment => {
         autoTransactions.push({
             id: Date.now() + Math.random(),
-            date: inv.date,
+            date: payment.date,
             description: `Payment for Invoice #${inv.invoiceNumber}`,
             category: 'Client Payment',
             type: TransactionType.INCOME,
-            amount: inv.amountPaid,
-            sourceId: inv.id,
+            amount: payment.amount,
+            sourceId: payment.id,
             isReadOnly: true,
         });
-    }
+    });
 });
 
 initialProjects.forEach(proj => {

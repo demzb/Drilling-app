@@ -1,19 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType } from '../types';
+import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment } from '../types';
 import InvoiceModal from './ProformaInvoiceModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import ConfirmationModal from './ConfirmationModal';
+import InvoicePaymentModal from './InvoicePaymentModal';
+import PaymentHistoryModal from './PaymentHistoryModal';
+import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
 
 interface InvoicesProps {
   invoices: Invoice[];
   projects: Project[];
-  onSave: (invoice: Omit<Invoice, 'id'> & { id?: string }) => void;
+  onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string; payments?: Payment[] }) => void;
   onDelete: (invoiceId: string) => void;
+  onReceivePayment: (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => void;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelete }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelete, onReceivePayment }) => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [typeFilter, setTypeFilter] = useState<string>('All');
@@ -39,18 +45,29 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
         const nextNumber = maxNumber + 1;
         return `${prefix}-${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
     };
-    
-    const getInvoiceTotal = (invoice: Invoice) => {
-        const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-        const taxAmount = subtotal * (invoice.taxRate / 100);
-        return subtotal + taxAmount;
-    };
 
-    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id'> & { id?: string }) => {
+    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'payments'> & { id?: string }) => {
         onSave(invoiceData);
         setIsInvoiceModalOpen(false);
         setSelectedInvoice(null);
     }
+
+    const handleOpenPaymentModal = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setIsPaymentModalOpen(true);
+    };
+
+    const handleSavePayment = (paymentAmount: number) => {
+        if (!selectedInvoice) return;
+        const paymentDetails: Omit<Payment, 'id'> = {
+            date: new Date().toISOString().split('T')[0],
+            amount: paymentAmount,
+            method: 'Unspecified' // Or get from modal
+        };
+        onReceivePayment(selectedInvoice.id, paymentDetails);
+        setIsPaymentModalOpen(false);
+        setSelectedInvoice(null);
+    };
     
     const handleOpenCreateModal = () => {
         setSelectedInvoice(null);
@@ -60,6 +77,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
     const handleOpenEditModal = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
         setIsInvoiceModalOpen(true);
+    };
+
+    const handleOpenHistoryModal = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setIsHistoryModalOpen(true);
     };
 
     const handleDeleteRequest = (invoice: Invoice) => {
@@ -153,7 +175,21 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                     isOpen={isDetailModalOpen}
                     onClose={() => { setIsDetailModalOpen(false); setSelectedInvoice(null); }}
                     invoice={selectedInvoice}
-                    isProjectCompleted={projects.find(p => p.id === selectedInvoice.projectId)?.status === ProjectStatus.COMPLETED}
+                />
+            )}
+             {selectedInvoice && (
+                <InvoicePaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => { setIsPaymentModalOpen(false); setSelectedInvoice(null); }}
+                    onSave={handleSavePayment}
+                    invoice={selectedInvoice}
+                />
+            )}
+             {selectedInvoice && (
+                <PaymentHistoryModal
+                    isOpen={isHistoryModalOpen}
+                    onClose={() => { setIsHistoryModalOpen(false); setSelectedInvoice(null); }}
+                    invoice={selectedInvoice}
                 />
             )}
             <ConfirmationModal
@@ -208,10 +244,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                             <tr>
                                 <th scope="col" className="px-6 py-3">Invoice #</th>
                                 <th scope="col" className="px-6 py-3">Client</th>
-                                <th scope="col" className="px-6 py-3">Borehole Type</th>
                                 <th scope="col" className="px-6 py-3">Date</th>
                                 <th scope="col" className="px-6 py-3 text-right">Total</th>
-                                <th scope="col" className="px-6 py-3 text-right">Due Now</th>
                                 <th scope="col" className="px-6 py-3 text-right">Paid</th>
                                 <th scope="col" className="px-6 py-3 text-right">Balance</th>
                                 <th scope="col" className="px-6 py-3 text-center">Status</th>
@@ -221,22 +255,18 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                         <tbody>
                             {filteredAndSortedInvoices.map((invoice) => {
                                 const total = getInvoiceTotal(invoice);
-                                const balance = total - invoice.amountPaid;
-                                const dueNow = getAmountDueNow(invoice);
+                                const totalPaid = getInvoiceTotalPaid(invoice);
+                                const balance = total - totalPaid;
                                 return (
                                 <tr key={invoice.id} className="bg-white border-b hover:bg-gray-50">
                                     <td className="px-6 py-4 font-medium text-blue-600">{invoice.invoiceNumber}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{invoice.clientName}</td>
-                                    <td className="px-6 py-4 text-xs">{invoice.boreholeType}</td>
                                     <td className="px-6 py-4">{invoice.date}</td>
                                     <td className="px-6 py-4 text-right font-medium text-gray-800">
                                         GMD {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
-                                     <td className="px-6 py-4 text-right font-bold text-gray-800">
-                                        GMD {dueNow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </td>
                                     <td className="px-6 py-4 text-right font-medium text-green-600">
-                                        GMD {invoice.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        GMD {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-6 py-4 text-right font-medium text-red-600">
                                         GMD {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -246,13 +276,16 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, onSave, onDelet
                                             {invoice.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-center space-x-2">
-                                        {invoice.status === InvoiceStatus.AWAITING_FINAL_PAYMENT && (
-                                            <button onClick={() => handleSendFinalInvoice(invoice)} className="font-medium text-green-600 hover:underline">Send Final</button>
+                                    <td className="px-6 py-4 text-center">
+                                      <div className="flex justify-center items-center space-x-2">
+                                        {invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.DRAFT && (
+                                            <button onClick={() => handleOpenPaymentModal(invoice)} className="font-medium text-green-600 hover:underline">Pay</button>
                                         )}
+                                        <button onClick={() => handleOpenHistoryModal(invoice)} className="font-medium text-purple-600 hover:underline">Payments</button>
                                         <button onClick={() => handleViewDetails(invoice)} className="font-medium text-blue-600 hover:underline">View</button>
                                         <button onClick={() => handleOpenEditModal(invoice)} className="font-medium text-yellow-600 hover:underline">Edit</button>
                                         <button onClick={() => handleDeleteRequest(invoice)} className="font-medium text-red-600 hover:underline">Delete</button>
+                                      </div>
                                     </td>
                                 </tr>
                             )})}

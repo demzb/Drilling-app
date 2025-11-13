@@ -74,6 +74,14 @@ export enum BoreholeType {
   ELECTRIC_LARGE = 'Electric Submersible (Large)',
 }
 
+export interface Payment {
+  id: string;
+  date: string;
+  amount: number;
+  method: string;
+  notes?: string;
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -88,7 +96,7 @@ export interface Invoice {
   invoiceType: InvoiceType;
   projectId?: string; // Link to project
   projectName?: string; // For easy display
-  amountPaid: number;
+  payments: Payment[];
   boreholeType?: BoreholeType;
 }
 

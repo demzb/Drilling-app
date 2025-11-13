@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -6,14 +6,9 @@ import Financials from './components/Financials';
 import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
-import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType } from './types';
+import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment } from './types';
 import { initialProjects, initialInvoices, initialEmployees, initialTransactions } from './data';
-
-const getInvoiceTotal = (invoice: Omit<Invoice, 'id'> & { id?: string }): number => {
-    const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-    const taxAmount = subtotal * (invoice.taxRate / 100);
-    return subtotal + taxAmount;
-};
+import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
   const [activePage, setActivePage] = useState('Dashboard');
@@ -22,76 +17,152 @@ const App: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSaveInvoice = useCallback((invoiceData: Omit<Invoice, 'id'> & { id?: string }) => {
-    setProjects(currentProjects => {
-      setTransactions(currentTransactions => {
-        let newTransactions = [...currentTransactions];
-        let updatedInvoice: Invoice;
-        let updatedInvoices: Invoice[];
+  const handleReceivePayment = useCallback((invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
+    const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
 
-        const isEditing = !!invoiceData.id;
+    let updatedInvoice: Invoice | undefined;
 
-        if (isEditing) {
-          updatedInvoice = { ...invoiceData, id: invoiceData.id! };
-          updatedInvoices = invoices.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv);
-        } else {
-          updatedInvoice = { ...invoiceData, id: `inv-${Date.now()}` };
-          updatedInvoices = [updatedInvoice, ...invoices];
+    const updatedInvoices = invoices.map(inv => {
+        if (inv.id === invoiceId) {
+            updatedInvoice = {
+                ...inv,
+                payments: [...inv.payments, newPayment]
+            };
+            return updatedInvoice;
         }
+        return inv;
+    });
 
-        // Server logic replication
-        const totalAmount = getInvoiceTotal(updatedInvoice);
+    if (!updatedInvoice) return;
+
+    const totalAmount = getInvoiceTotal(updatedInvoice);
+    const totalPaid = getInvoiceTotalPaid(updatedInvoice);
+
+    // Update status based on payment
+    if (updatedInvoice.status !== InvoiceStatus.DRAFT) {
         const depositAmount = totalAmount * 0.75;
-        if (updatedInvoice.invoiceType === InvoiceType.PROFORMA && (updatedInvoice.status === InvoiceStatus.SENT || updatedInvoice.status === InvoiceStatus.PARTIALLY_PAID) && updatedInvoice.amountPaid >= depositAmount && updatedInvoice.amountPaid < totalAmount) {
+        if (totalPaid >= totalAmount - 0.01) {
+            updatedInvoice.status = InvoiceStatus.PAID;
+        } else if (updatedInvoice.invoiceType === InvoiceType.PROFORMA && totalPaid >= depositAmount) {
             updatedInvoice.status = InvoiceStatus.AWAITING_FINAL_PAYMENT;
+        } else if (totalPaid > 0) {
+            updatedInvoice.status = InvoiceStatus.PARTIALLY_PAID;
+        } else {
+             if (updatedInvoice.status !== InvoiceStatus.SENT) {
+                updatedInvoice.status = InvoiceStatus.SENT;
+            }
         }
-        if (updatedInvoice.status === InvoiceStatus.PAID) {
-            updatedInvoice.amountPaid = totalAmount;
-        }
+    }
 
-        // Transaction management
-        newTransactions = newTransactions.filter(t => t.sourceId !== updatedInvoice.id);
-        if (updatedInvoice.amountPaid > 0) {
-            newTransactions.unshift({
+    setInvoices(updatedInvoices);
+
+    // Add new transaction for the payment
+    setTransactions(current => [
+        {
+            id: Date.now(),
+            date: newPayment.date,
+            description: `Payment for Invoice #${updatedInvoice?.invoiceNumber}`,
+            category: 'Client Payment',
+            type: TransactionType.INCOME,
+            amount: newPayment.amount,
+            sourceId: newPayment.id,
+            isReadOnly: true,
+        },
+        ...current
+    ]);
+
+    // Update Project amountReceived
+    if (updatedInvoice.projectId) {
+        setProjects(currentProjects => {
+            const projectIndex = currentProjects.findIndex(p => p.id === updatedInvoice!.projectId);
+            if (projectIndex !== -1) {
+                const totalPaidForProject = updatedInvoices
+                    .filter(inv => inv.projectId === updatedInvoice!.projectId)
+                    .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
+                
+                const newProjects = [...currentProjects];
+                const projectToUpdate = { ...newProjects[projectIndex] };
+                projectToUpdate.amountReceived = totalPaidForProject;
+
+                if (projectToUpdate.status === ProjectStatus.PLANNED && totalPaidForProject > 0) {
+                    projectToUpdate.status = ProjectStatus.IN_PROGRESS;
+                }
+                if (projectToUpdate.status === ProjectStatus.IN_PROGRESS && projectToUpdate.totalBudget > 0 && totalPaidForProject >= projectToUpdate.totalBudget) {
+                    projectToUpdate.status = ProjectStatus.COMPLETED;
+                }
+                newProjects[projectIndex] = projectToUpdate;
+                return newProjects;
+            }
+            return currentProjects;
+        });
+    }
+
+  }, [invoices]);
+
+  const handleSaveInvoice = useCallback((invoiceData: Omit<Invoice, 'id' | 'payments'> & { id?: string; payments?: Payment[] }) => {
+    const isEditing = !!invoiceData.id;
+    let newPayment: Payment | null = null;
+    let updatedInvoice: Invoice;
+
+    if (isEditing) {
+        const existingInvoice = invoices.find(inv => inv.id === invoiceData.id);
+        updatedInvoice = { ...existingInvoice!, ...invoiceData, id: invoiceData.id! };
+    } else {
+        updatedInvoice = { ...invoiceData, id: `inv-${Date.now()}`, payments: [] };
+    }
+
+    // Special case: If a new invoice is created with status "Paid", auto-create a full payment record.
+    if (!isEditing && updatedInvoice.status === InvoiceStatus.PAID) {
+        const totalAmount = getInvoiceTotal(updatedInvoice);
+        newPayment = {
+            id: `pay-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            amount: totalAmount,
+            method: 'Initial Payment',
+        };
+        updatedInvoice.payments.push(newPayment);
+    }
+    
+    const updatedInvoices = isEditing 
+        ? invoices.map(inv => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
+        : [updatedInvoice, ...invoices];
+
+    setInvoices(updatedInvoices);
+
+    // If a payment was auto-created, create a transaction and update project financials
+    if (newPayment) {
+         setTransactions(current => [
+            {
                 id: Date.now(),
-                date: updatedInvoice.date,
+                date: newPayment!.date,
                 description: `Payment for Invoice #${updatedInvoice.invoiceNumber}`,
                 category: 'Client Payment',
                 type: TransactionType.INCOME,
-                amount: updatedInvoice.amountPaid,
-                sourceId: updatedInvoice.id,
+                amount: newPayment!.amount,
+                sourceId: newPayment!.id,
                 isReadOnly: true,
+            },
+            ...current
+        ]);
+        
+        if (updatedInvoice.projectId) {
+            setProjects(currentProjects => {
+                const projectIndex = currentProjects.findIndex(p => p.id === updatedInvoice.projectId);
+                if (projectIndex !== -1) {
+                    const totalPaidForProject = updatedInvoices
+                        .filter(inv => inv.projectId === updatedInvoice.projectId)
+                        .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
+                    
+                    const newProjects = [...currentProjects];
+                    newProjects[projectIndex].amountReceived = totalPaidForProject;
+                    return newProjects;
+                }
+                return currentProjects;
             });
         }
-        
-        setInvoices(updatedInvoices);
-
-        // Update Project amountReceived and status
-        let newProjects = [...currentProjects];
-        if (updatedInvoice.projectId) {
-            const projectIndex = newProjects.findIndex(p => p.id === updatedInvoice.projectId);
-            if (projectIndex !== -1) {
-                const totalPaidForProject = updatedInvoices
-                    .filter(inv => inv.projectId === updatedInvoice.projectId)
-                    .reduce((sum, inv) => sum + inv.amountPaid, 0);
-                
-                newProjects[projectIndex].amountReceived = totalPaidForProject;
-
-                if (newProjects[projectIndex].status === ProjectStatus.PLANNED && totalPaidForProject > 0) {
-                    newProjects[projectIndex].status = ProjectStatus.IN_PROGRESS;
-                }
-                if (newProjects[projectIndex].status === ProjectStatus.IN_PROGRESS && newProjects[projectIndex].totalBudget > 0 && totalPaidForProject >= newProjects[projectIndex].totalBudget) {
-                    newProjects[projectIndex].status = ProjectStatus.COMPLETED;
-                }
-            }
-        }
-        
-        return newTransactions;
-      });
-      return currentProjects;
-    });
+    }
+    
   }, [invoices]);
 
 
@@ -101,8 +172,9 @@ const App: React.FC = () => {
 
     const updatedInvoices = invoices.filter(inv => inv.id !== invoiceId);
     setInvoices(updatedInvoices);
-
-    setTransactions(currentTransactions => currentTransactions.filter(t => t.sourceId !== invoiceId));
+    
+    const paymentIdsToDelete = new Set(invoiceToDelete.payments.map(p => p.id));
+    setTransactions(currentTransactions => currentTransactions.filter(t => !paymentIdsToDelete.has(t.sourceId!)));
 
     if (invoiceToDelete.projectId) {
         setProjects(currentProjects => {
@@ -110,7 +182,7 @@ const App: React.FC = () => {
             if (projectIndex !== -1) {
                 const totalPaid = updatedInvoices
                     .filter(inv => inv.projectId === invoiceToDelete.projectId)
-                    .reduce((sum, inv) => sum + inv.amountPaid, 0);
+                    .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
                 
                 const newProjects = [...currentProjects];
                 newProjects[projectIndex].amountReceived = totalPaid;
@@ -208,9 +280,6 @@ const App: React.FC = () => {
   }, []);
 
   const handleDeleteEmployee = useCallback((employeeId: number) => {
-    if (!window.confirm("Are you sure you want to delete this employee? This will remove them from all assigned projects and cannot be undone.")) {
-        return;
-    }
     setEmployees(prev => prev.filter(e => e.id !== employeeId));
 
     setProjects(currentProjects => {
@@ -245,15 +314,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleDeleteTransaction = useCallback((transactionId: number) => {
-    if (window.confirm('Are you sure you want to delete this transaction?')) {
-        setTransactions(prev => prev.filter(t => t.id !== transactionId));
-    }
+    setTransactions(prev => prev.filter(t => t.id !== transactionId));
   }, []);
 
   const renderContent = () => {
-    if (isLoading) {
-      return <div className="flex justify-center items-center h-full"><div className="text-xl font-semibold">Loading Business Suite...</div></div>;
-    }
     switch (activePage) {
       case 'Dashboard':
         return <Dashboard projects={projects} employees={employees} transactions={transactions} />;
@@ -277,6 +341,7 @@ const App: React.FC = () => {
                   projects={projects}
                   onSave={handleSaveInvoice}
                   onDelete={handleDeleteInvoice}
+                  onReceivePayment={handleReceivePayment}
                />;
       case 'Human Resources':
         return <HumanResources 
