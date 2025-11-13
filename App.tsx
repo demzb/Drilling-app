@@ -16,7 +16,7 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
+  
   const fullStateUpdate = (data: any) => {
     setProjects(data.projects || []);
     setInvoices(data.invoices || []);
@@ -26,6 +26,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch('/api/data');
         if (!response.ok) {
@@ -258,7 +259,10 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-gray-100 font-sans">
       <Sidebar activePage={activePage} setActivePage={setActivePage} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header currentPage={activePage} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Header 
+            currentPage={activePage} 
+            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
           {renderContent()}
         </main>

@@ -15,7 +15,8 @@
     "@google/genai": "^1.29.1",
     "express": "^5.1.0",
     "lowdb": "^7.0.1",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "firebase": "^12.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
