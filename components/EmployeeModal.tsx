@@ -4,11 +4,11 @@ import { Employee, EmployeeStatus } from '../types';
 interface EmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (employee: Omit<Employee, 'id'> & { id?: number }) => void;
+  onSave: (employee: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   employeeToEdit: Employee | null;
 }
 
-const emptyEmployee: Omit<Employee, 'id'> = {
+const emptyEmployee: Omit<Employee, 'id' | 'user_id' | 'created_at'> = {
     name: '',
     role: '',
     gender: '',
@@ -17,17 +17,15 @@ const emptyEmployee: Omit<Employee, 'id'> = {
     startDate: new Date().toISOString().split('T')[0],
     avatarUrl: '',
     status: EmployeeStatus.ACTIVE,
-    // FIX: Add missing properties to satisfy the Omit<Employee, 'id'> type. These are backend-managed fields.
-    user_id: '',
-    created_at: '',
 };
 
 const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSave, employeeToEdit }) => {
-    const [formData, setFormData] = useState<Omit<Employee, 'id'>>(emptyEmployee);
+    const [formData, setFormData] = useState<Omit<Employee, 'id' | 'user_id' | 'created_at'>>(emptyEmployee);
 
     useEffect(() => {
         if (employeeToEdit) {
-            setFormData(employeeToEdit);
+            const { user_id, created_at, id, ...editableData } = employeeToEdit;
+            setFormData(editableData);
         } else {
             setFormData(emptyEmployee);
         }
@@ -40,19 +38,19 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSave, 
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.role || !formData.gender) {
             alert('Please fill in Name, Role, and Gender.');
             return;
         }
 
-        const employeeData = { ...formData };
+        const employeeData: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number } = { ...formData };
         if (employeeToEdit) {
-            (employeeData as Employee).id = employeeToEdit.id;
+            employeeData.id = employeeToEdit.id;
         }
         
-        onSave(employeeData);
+        await onSave(employeeData);
     };
 
     return (

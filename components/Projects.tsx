@@ -10,11 +10,12 @@ interface ProjectsProps {
   employees: Employee[];
   clients: Client[];
   onDeleteProject: (projectId: string) => void;
-  onSaveProject: (project: Omit<Project, 'id'> & { id?: string }) => void;
+  onSaveProject: (project: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   onUpdateProjectDetails: (project: Project) => void;
+  onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDeleteProject, onSaveProject, onUpdateProjectDetails }) => {
+const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDeleteProject, onSaveProject, onUpdateProjectDetails, onSaveClient }) => {
     const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -37,8 +38,8 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
         setIsProjectModalOpen(true);
     };
 
-    const handleSaveProjectAndCloseModal = (project: Omit<Project, 'id'> & { id?: string }) => {
-        onSaveProject(project);
+    const handleSaveProjectAndCloseModal = async (project: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+        await onSaveProject(project);
         setIsProjectModalOpen(false);
     };
 
@@ -80,6 +81,7 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
                 onSave={handleSaveProjectAndCloseModal}
                 project={selectedProject}
                 clients={clients}
+                onSaveClient={onSaveClient}
             />
             {selectedProject && (
                 <ProjectDetailModal

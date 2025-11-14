@@ -4,49 +4,52 @@ import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, P
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string, payments?: Payment[] }) => void;
+  onSave: (invoice: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   invoiceToEdit: Invoice | null;
   nextInvoiceNumber: string;
   projects: Project[];
   clients: Client[];
 }
 
-const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
-  const getInitialState = () => {
-    if (invoiceToEdit) {
-      return { 
-        ...invoiceToEdit,
-        discountAmount: invoiceToEdit.discountAmount || 0,
-        boreholeType: invoiceToEdit.boreholeType || BoreholeType.SOLAR_MEDIUM,
-      };
-    }
-    return {
-      invoiceNumber: nextInvoiceNumber,
-      clientId: undefined,
-      clientName: '',
-      clientAddress: '',
-      date: new Date().toISOString().split('T')[0],
-      dueDate: '',
-      lineItems: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
-      notes: 'Thank you for your business. Please make payment to the specified account.',
-      taxRate: 0,
-      // FIX: Add missing discountAmount property
-      discountAmount: 0,
-      projectId: undefined,
-      projectName: undefined,
-      status: InvoiceStatus.DRAFT,
-      invoiceType: InvoiceType.PROFORMA,
-      payments: [],
-      boreholeType: BoreholeType.SOLAR_MEDIUM,
-    };
-  };
+const emptyInvoice = {
+  invoiceNumber: '',
+  clientId: undefined,
+  clientName: '',
+  clientAddress: '',
+  date: new Date().toISOString().split('T')[0],
+  dueDate: '',
+  lineItems: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+  notes: 'Thank you for your business. Please make payment to the specified account.',
+  taxRate: 0,
+  discountAmount: 0,
+  projectId: undefined,
+  projectName: undefined,
+  status: InvoiceStatus.DRAFT,
+  invoiceType: InvoiceType.PROFORMA,
+  payments: [],
+  boreholeType: BoreholeType.SOLAR_MEDIUM,
+};
 
-  const [invoice, setInvoice] = useState<Omit<Invoice, 'id'> & {id?: string}>(getInitialState);
+
+const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
+  const [invoice, setInvoice] = useState<Omit<Invoice, 'id' | 'user_id' | 'created_at'> & {id?: string}>(emptyInvoice);
   
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    setInvoice(getInitialState());
+    if (invoiceToEdit) {
+      const { user_id, created_at, ...editableInvoice } = invoiceToEdit;
+      setInvoice({
+          ...editableInvoice,
+          discountAmount: editableInvoice.discountAmount || 0,
+          boreholeType: editableInvoice.boreholeType || BoreholeType.SOLAR_MEDIUM,
+      });
+    } else {
+      setInvoice({
+        ...emptyInvoice,
+        invoiceNumber: nextInvoiceNumber,
+      });
+    }
   }, [invoiceToEdit, isOpen, nextInvoiceNumber]);
 
 
@@ -117,12 +120,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
     setInvoice({ ...invoice, lineItems: newLineItems });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!invoice.clientId) {
         alert("Please select a client for the invoice.");
         return;
     }
-    onSave({
+    await onSave({
       ...invoice,
       discountAmount: parseFloat(String(invoice.discountAmount)) || 0,
     });

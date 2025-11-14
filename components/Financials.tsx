@@ -6,7 +6,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 interface FinancialsProps {
   transactions: Transaction[];
-  onSaveTransaction: (transaction: Omit<Transaction, 'id'> & { id?: number }) => void;
+  onSaveTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   onDeleteTransaction: (transactionId: number) => void;
 }
 
@@ -40,8 +40,8 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction
     setIsTransactionModalOpen(true);
   };
   
-  const handleSaveTransaction = (transaction: Omit<Transaction, 'id'> & { id?: number }) => {
-    onSaveTransaction(transaction);
+  const handleSaveTransaction = async (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
+    await onSaveTransaction(transaction);
     setIsTransactionModalOpen(false);
   };
 

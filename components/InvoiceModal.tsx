@@ -1,27 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, Payment, Client } from '../types';
+import ClientModal from './ClientModal';
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string, payments?: Payment[] }) => void;
+  onSave: (invoice: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   invoiceToEdit: Invoice | null;
   nextInvoiceNumber: string;
   projects: Project[];
   clients: Client[];
+  onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
-  const getInitialState = () => {
-    if (invoiceToEdit) {
-      return { 
-        ...invoiceToEdit,
-        discountAmount: invoiceToEdit.discountAmount || 0,
-        boreholeType: invoiceToEdit.boreholeType || BoreholeType.SOLAR_MEDIUM,
-      };
-    }
-    return {
-      invoiceNumber: nextInvoiceNumber,
+const emptyInvoice = {
+      invoiceNumber: '',
       clientId: undefined,
       clientName: '',
       clientAddress: '',
@@ -37,15 +30,28 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       invoiceType: InvoiceType.INVOICE,
       payments: [],
       boreholeType: BoreholeType.SOLAR_MEDIUM,
-    };
-  };
+};
 
-  const [invoice, setInvoice] = useState<Omit<Invoice, 'id'> & {id?: string}>(getInitialState);
+const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients, onSaveClient }) => {
+  const [invoice, setInvoice] = useState<Omit<Invoice, 'id' | 'user_id' | 'created_at'> & {id?: string}>(emptyInvoice);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    setInvoice(getInitialState());
+    if (invoiceToEdit) {
+      const { user_id, created_at, ...editableInvoice } = invoiceToEdit;
+      setInvoice({
+        ...editableInvoice,
+        discountAmount: editableInvoice.discountAmount || 0,
+        boreholeType: editableInvoice.boreholeType || BoreholeType.SOLAR_MEDIUM,
+      });
+    } else {
+      setInvoice({
+        ...emptyInvoice,
+        invoiceNumber: nextInvoiceNumber,
+      });
+    }
   }, [invoiceToEdit, isOpen, nextInvoiceNumber]);
 
 
@@ -74,7 +80,6 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
           ...invoice,
           projectId: selectedProjectId || undefined,
           projectName: selectedProject ? selectedProject.name : undefined,
-          // If project is selected, auto-select client
           clientId: projectClient ? projectClient.id : invoice.clientId,
           clientName: projectClient ? projectClient.name : (selectedProject ? selectedProject.clientName : invoice.clientName),
           clientAddress: projectClient ? projectClient.address : invoice.clientAddress,
@@ -84,6 +89,11 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
 
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedClientId = e.target.value;
+      if (selectedClientId === '--new--') {
+          setIsClientModalOpen(true);
+          e.target.value = invoice.clientId || '';
+          return;
+      }
       const selectedClient = clients.find(c => c.id === selectedClientId);
       setInvoice({
           ...invoice,
@@ -93,6 +103,19 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       });
   };
   
+  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const newClient = await onSaveClient(clientData);
+    if (newClient) {
+        setInvoice(prev => ({
+            ...prev,
+            clientId: newClient.id,
+            clientName: newClient.name,
+            clientAddress: newClient.address,
+        }));
+    }
+    setIsClientModalOpen(false);
+  };
+
   const handleLineItemChange = (index: number, field: keyof LineItem, value: string | number) => {
     const newLineItems = [...invoice.lineItems];
     const item = newLineItems[index];
@@ -116,12 +139,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
     setInvoice({ ...invoice, lineItems: newLineItems });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!invoice.clientId) {
         alert("Please select a client for the invoice.");
         return;
     }
-    onSave({
+    await onSave({
         ...invoice,
         discountAmount: parseFloat(String(invoice.discountAmount)) || 0,
     });
@@ -129,6 +152,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <ClientModal
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        onSave={handleSaveNewClient}
+        clientToEdit={null}
+      />
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-xl font-semibold text-gray-800">{invoiceToEdit ? 'Edit Invoice' : 'Create Invoice'}</h2>
@@ -160,6 +189,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                 <select name="clientId" value={invoice.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!!invoice.projectId}>
                     <option value="">Select a client...</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="--new--" className="font-bold text-blue-600">-- Add New Client --</option>
                 </select>
                 {invoice.projectId && <p className="text-xs text-gray-500 mt-1">Client is linked from the selected project.</p>}
             </div>
@@ -220,7 +250,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                     </div>
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Tax Rate (%)</label>
-                      <input type="number" name="taxRate" value={invoice.taxRate} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
+                      <input type="number" name="taxRate" value={invoice.taxRate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
                    </div>
                    <div className="flex justify-between items-center pt-2 border-t mt-2">
                        <span className="text-lg font-semibold text-gray-800">Total</span>

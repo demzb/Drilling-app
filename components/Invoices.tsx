@@ -11,12 +11,13 @@ interface InvoicesProps {
   invoices: Invoice[];
   projects: Project[];
   clients: Client[];
-  onSave: (invoice: Omit<Invoice, 'id' | 'payments'> & { id?: string; payments?: Payment[] }) => void;
+  onSave: (invoice: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   onDelete: (invoiceId: string) => void;
   onReceivePayment: (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => void;
+  onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment, onSaveClient }) => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
@@ -46,8 +47,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         return `${prefix}-${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
     };
 
-    const handleSaveInvoice = (invoiceData: Omit<Invoice, 'id' | 'payments'> & { id?: string }) => {
-        onSave(invoiceData);
+    const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+        await onSave(invoiceData);
         setIsInvoiceModalOpen(false);
         setSelectedInvoice(null);
     }
@@ -143,7 +144,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         result.sort((a, b) => {
             const dateA = new Date(a.date).getTime();
             const dateB = new Date(b.date).getTime();
-            // FIX: Corrected typo from `b` to `dateB` in sort comparison.
             return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
         });
 
@@ -161,6 +161,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                 projects={projects}
                 clients={clients}
                 invoiceToEdit={selectedInvoice}
+                onSaveClient={onSaveClient}
             />
             {selectedInvoice && (
                 <InvoiceDetailModal

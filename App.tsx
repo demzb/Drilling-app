@@ -9,9 +9,33 @@ import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
 import Login from './components/Login';
-import { supabase } from './supabase';
+import supabase from './supabase';
 import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client } from './types';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
+
+const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    if (error && typeof error === 'object') {
+        if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
+            const supabaseError = error as { message: string; details?: string; hint?: string };
+            let fullMessage = supabaseError.message;
+            if (supabaseError.details) fullMessage += ` Details: ${supabaseError.details}`;
+            if (supabaseError.hint) fullMessage += ` Hint: ${supabaseError.hint}`;
+            return fullMessage;
+        }
+        try {
+            return `An unexpected error object was received: ${JSON.stringify(error)}`;
+        } catch {
+            return 'An un-stringifiable error object was received.';
+        }
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+    return 'An unexpected error occurred.';
+};
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -38,9 +62,9 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (showLoader = true) => {
     if (!session) return;
-    setLoading(true);
+    if (showLoader) setLoading(true);
     try {
       const [
         { data: projectsData, error: projectsError },
@@ -68,10 +92,11 @@ const App: React.FC = () => {
       setTransactions(transactionsData || []);
       setClients(clientsData || []);
 
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching data:", error);
+      alert(`Error fetching data: ${getErrorMessage(error)}`);
     } finally {
-        setLoading(false);
+        if (showLoader) setLoading(false);
     }
   }, [session]);
 
@@ -81,11 +106,11 @@ const App: React.FC = () => {
       
       const channels = supabase.channel('db-changes');
       channels
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => fetchData(false))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => fetchData(false))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => fetchData(false))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData(false))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData(false))
         .subscribe();
         
         return () => {
@@ -98,7 +123,16 @@ const App: React.FC = () => {
 
   const handleReceivePayment = useCallback(async (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
     const { data: invoiceToUpdate, error: fetchError } = await supabase.from('invoices').select('*').eq('id', invoiceId).single();
-    if (fetchError || !invoiceToUpdate) return console.error('Error fetching invoice for payment', fetchError);
+    if (fetchError) {
+        console.error('Error fetching invoice for payment', fetchError);
+        alert(`Error fetching invoice: ${getErrorMessage(fetchError)}`);
+        return;
+    }
+    if (!invoiceToUpdate) {
+        console.error('Invoice not found for payment');
+        alert('Error: Invoice not found.');
+        return;
+    }
     
     const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
     const payments = [...invoiceToUpdate.payments, newPayment];
@@ -111,7 +145,11 @@ const App: React.FC = () => {
     const updatedInvoice = { ...invoiceToUpdate, payments, status: newStatus };
     
     const { error: updateError } = await supabase.from('invoices').update(updatedInvoice).eq('id', invoiceId);
-    if(updateError) return console.error("Error updating invoice with payment", updateError);
+    if(updateError) {
+        console.error("Error updating invoice with payment", updateError);
+        alert(`Error saving payment: ${getErrorMessage(updateError)}`);
+        return;
+    }
     
     // Create transaction
     const newTransaction = {
@@ -123,29 +161,39 @@ const App: React.FC = () => {
         isReadOnly: true,
         user_id: session?.user.id,
     };
-    await supabase.from('transactions').insert(newTransaction);
+    const { error: transactionError } = await supabase.from('transactions').insert(newTransaction);
+    if (transactionError) {
+        console.error('Error creating transaction for payment', transactionError);
+        alert(`Error creating associated transaction: ${getErrorMessage(transactionError)}`);
+    }
     // Project amount update is handled via a trigger in Supabase for accuracy
   }, [session]);
 
   const handleSaveInvoice = useCallback(async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
     const { id, ...dataToSave } = invoiceData;
-    if (id) {
-        await supabase.from('invoices').update(dataToSave).eq('id', id);
-    } else {
-        await supabase.from('invoices').insert({ ...dataToSave, user_id: session?.user.id, payments: [] });
+    const { error } = id
+        ? await supabase.from('invoices').update(dataToSave).eq('id', id)
+        : await supabase.from('invoices').insert({ ...dataToSave, user_id: session?.user.id, payments: [] });
+
+    if (error) {
+        console.error('Error saving invoice:', error);
+        alert(`Error saving invoice: ${getErrorMessage(error)}`);
     }
   }, [session]);
 
   const handleDeleteInvoice = useCallback(async (invoiceId: string) => {
-    await supabase.from('invoices').delete().eq('id', invoiceId);
+    const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
+    if (error) {
+        console.error('Error deleting invoice:', error);
+        alert(`Error deleting invoice: ${getErrorMessage(error)}`);
+    }
   }, []);
 
   const handleSaveProject = useCallback(async (projectData: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
     const { id, ...dataToSave } = projectData;
-    if (id) {
-      await supabase.from('projects').update(dataToSave).eq('id', id);
-    } else {
-      await supabase.from('projects').insert({ 
+    const { error } = id
+      ? await supabase.from('projects').update(dataToSave).eq('id', id)
+      : await supabase.from('projects').insert({ 
           ...dataToSave, 
           user_id: session?.user.id,
           amountReceived: 0,
@@ -153,55 +201,93 @@ const App: React.FC = () => {
           staff: [],
           otherExpenses: [],
       });
+    
+    if (error) {
+        console.error('Error saving project:', error);
+        alert(`Error saving project: ${getErrorMessage(error)}`);
     }
   }, [session]);
   
   const handleProjectDetailsUpdate = useCallback(async (updatedProject: Project) => {
-    await supabase.from('projects').update(updatedProject).eq('id', updatedProject.id);
+    const { error } = await supabase.from('projects').update(updatedProject).eq('id', updatedProject.id);
+    if (error) {
+        console.error('Error updating project details:', error);
+        alert(`Error updating project: ${getErrorMessage(error)}`);
+    }
     // Real-time updates will refresh data, auto-transactions should be handled by Supabase triggers/functions for consistency
   }, []);
 
   const handleDeleteProject = useCallback(async (projectId: string) => {
-    await supabase.from('projects').delete().eq('id', projectId);
+    const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    if (error) {
+        console.error('Error deleting project:', error);
+        alert(`Error deleting project: ${getErrorMessage(error)}`);
+    }
   }, []);
 
   const handleSaveEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
     const { id, ...dataToSave } = employeeData;
-     if (id) {
-         await supabase.from('employees').update(dataToSave).eq('id', id);
-     } else {
-         await supabase.from('employees').insert({ ...dataToSave, user_id: session?.user.id });
-     }
+     const { error } = id
+         ? await supabase.from('employees').update(dataToSave).eq('id', id)
+         : await supabase.from('employees').insert({ ...dataToSave, user_id: session?.user.id });
+    
+     if (error) {
+        console.error('Error saving employee:', error);
+        alert(`Error saving employee: ${getErrorMessage(error)}`);
+    }
   }, [session]);
 
   const handleDeleteEmployee = useCallback(async (employeeId: number) => {
-    await supabase.from('employees').delete().eq('id', employeeId);
+    const { error } = await supabase.from('employees').delete().eq('id', employeeId);
+    if (error) {
+        console.error('Error deleting employee:', error);
+        alert(`Error deleting employee: ${getErrorMessage(error)}`);
+    }
   }, []);
   
   const handleSaveTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
      const { id, ...dataToSave } = transactionData;
-     if (id) {
-         await supabase.from('transactions').update(dataToSave).eq('id', id);
-     } else {
-         await supabase.from('transactions').insert({ ...dataToSave, user_id: session?.user.id });
-     }
-  }, [session]);
-
-  const handleDeleteTransaction = useCallback(async (transactionId: number) => {
-    await supabase.from('transactions').delete().eq('id', transactionId);
-  }, []);
-
-  const handleSaveClient = useCallback(async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
-    const { id, ...dataToSave } = clientData;
-    if (id) {
-        await supabase.from('clients').update(dataToSave).eq('id', id);
-    } else {
-        await supabase.from('clients').insert({ ...dataToSave, user_id: session?.user.id });
+     const { error } = id
+         ? await supabase.from('transactions').update(dataToSave).eq('id', id)
+         : await supabase.from('transactions').insert({ ...dataToSave, user_id: session?.user.id });
+     
+     if (error) {
+        console.error('Error saving transaction:', error);
+        alert(`Error saving transaction: ${getErrorMessage(error)}`);
     }
   }, [session]);
 
+  const handleDeleteTransaction = useCallback(async (transactionId: number) => {
+    const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
+    if (error) {
+        console.error('Error deleting transaction:', error);
+        alert(`Error deleting transaction: ${getErrorMessage(error)}`);
+    }
+  }, []);
+
+  const handleSaveClient = useCallback(async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }): Promise<Client | null> => {
+    const { id, ...dataToSave } = clientData;
+    let result;
+    if (id) {
+        result = await supabase.from('clients').update(dataToSave).eq('id', id).select().single();
+    } else {
+        result = await supabase.from('clients').insert({ ...dataToSave, user_id: session?.user.id }).select().single();
+    }
+    
+    if (result.error) {
+        console.error("Error saving client:", result.error);
+        alert(`Error saving client: ${getErrorMessage(result.error)}`);
+        return null;
+    }
+    return result.data;
+  }, [session]);
+
   const handleDeleteClient = useCallback(async (clientId: string) => {
-    await supabase.from('clients').delete().eq('id', clientId);
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    if (error) {
+        console.error('Error deleting client:', error);
+        alert(`Error deleting client: ${getErrorMessage(error)}`);
+    }
   }, []);
 
   const renderContent = () => {
@@ -211,7 +297,7 @@ const App: React.FC = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-full">
-            <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 2000/svg">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
@@ -236,6 +322,7 @@ const App: React.FC = () => {
                   onDeleteProject={handleDeleteProject}
                   onSaveProject={handleSaveProject}
                   onUpdateProjectDetails={handleProjectDetailsUpdate}
+                  onSaveClient={handleSaveClient}
                />;
       case 'Invoices':
         return <Invoices 
@@ -245,6 +332,7 @@ const App: React.FC = () => {
                   onSave={handleSaveInvoice}
                   onDelete={handleDeleteInvoice}
                   onReceivePayment={handleReceivePayment}
+                  onSaveClient={handleSaveClient}
                />;
       case 'Clients':
         return <Clients 

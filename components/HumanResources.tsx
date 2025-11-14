@@ -5,7 +5,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 interface HumanResourcesProps {
   employees: Employee[];
-  onSaveEmployee: (employee: Omit<Employee, 'id'> & { id?: number }) => void;
+  onSaveEmployee: (employee: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   onDeleteEmployee: (employeeId: number) => void;
 }
 
@@ -25,13 +25,13 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
     setIsModalOpen(true);
   };
 
-  const handleSaveEmployee = (employeeData: Omit<Employee, 'id'> & { id?: number }) => {
+  const handleSaveEmployee = async (employeeData: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
     const finalEmployeeData = {
         ...employeeData,
         status: employeeData.status || EmployeeStatus.ACTIVE,
         avatarUrl: employeeData.avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`
     };
-    onSaveEmployee(finalEmployeeData);
+    await onSaveEmployee(finalEmployeeData);
     setIsModalOpen(false);
   };
   

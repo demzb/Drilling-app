@@ -5,7 +5,7 @@ import ConfirmationModal from './ConfirmationModal';
 
 interface ClientsProps {
   clients: Client[];
-  onSaveClient: (client: Omit<Client, 'id'> & { id?: string }) => void;
+  onSaveClient: (client: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
   onDeleteClient: (clientId: string) => void;
 }
 
@@ -25,9 +25,11 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
     setIsModalOpen(true);
   };
 
-  const handleSaveClient = (clientData: Omit<Client, 'id'> & { id?: string }) => {
-    onSaveClient(clientData);
-    setIsModalOpen(false);
+  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const savedClient = await onSaveClient(clientData);
+    if (savedClient) {
+      setIsModalOpen(false);
+    }
   };
   
   const handleDeleteRequest = (client: Client) => {

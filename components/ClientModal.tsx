@@ -4,27 +4,25 @@ import { Client } from '../types';
 interface ClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (client: Omit<Client, 'id'> & { id?: string }) => void;
+  onSave: (client: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   clientToEdit: Client | null;
 }
 
-const emptyClient: Omit<Client, 'id'> = {
+const emptyClient: Omit<Client, 'id' | 'user_id' | 'created_at'> = {
     name: '',
     contactPerson: '',
     email: '',
     phone: '',
     address: '',
-    // FIX: Add missing properties to satisfy the Omit<Client, 'id'> type. These are backend-managed fields.
-    user_id: '',
-    created_at: '',
 };
 
 const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, clientToEdit }) => {
-    const [formData, setFormData] = useState<Omit<Client, 'id'>>(emptyClient);
+    const [formData, setFormData] = useState<Omit<Client, 'id' | 'user_id' | 'created_at'>>(emptyClient);
 
     useEffect(() => {
         if (clientToEdit) {
-            setFormData(clientToEdit);
+            const { id, user_id, created_at, ...editableData } = clientToEdit;
+            setFormData(editableData);
         } else {
             setFormData(emptyClient);
         }
@@ -37,19 +35,19 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, clie
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.phone) {
             alert('Please fill in at least Name and Phone Number.');
             return;
         }
 
-        const clientData = { ...formData };
+        const clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string } = { ...formData };
         if (clientToEdit) {
-            (clientData as Client).id = clientToEdit.id;
+            clientData.id = clientToEdit.id;
         }
         
-        onSave(clientData);
+        await onSave(clientData);
     };
 
     return (

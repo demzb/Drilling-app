@@ -4,7 +4,7 @@ import { Transaction, TransactionType } from '../types';
 interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (transaction: Omit<Transaction, 'id'> & { id?: number }) => void;
+  onSave: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   transaction: Transaction | null;
 }
 
@@ -39,7 +39,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.description || !formData.amount) {
       alert('Please fill in all fields.');
@@ -50,7 +50,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
         amount: parseFloat(formData.amount),
         ...(transaction && { id: transaction.id }) // include id if it's an edit
     };
-    onSave(transactionToSave);
+    await onSave(transactionToSave);
   };
 
   return (

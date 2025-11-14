@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Project, ProjectStatus, BoreholeType, Client } from '../types';
+import ClientModal from './ClientModal';
 
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (project: Omit<Project, 'id'> & { id?: string }) => void;
+  onSave: (project: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   project: Project | null;
   clients: Client[];
+  onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-const emptyProject = {
+type ProjectFormData = Omit<Project, 'id' | 'user_id' | 'created_at' | 'amountReceived' | 'materials' | 'staff' | 'otherExpenses'>;
+
+const emptyProject: ProjectFormData = {
     name: '',
     clientId: undefined,
     clientName: '',
@@ -21,15 +25,20 @@ const emptyProject = {
     boreholeType: BoreholeType.SOLAR_MEDIUM,
 };
 
-const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, project, clients }) => {
-  const [formData, setFormData] = useState<any>(emptyProject);
+const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, project, clients, onSaveClient }) => {
+  const [formData, setFormData] = useState<ProjectFormData>(emptyProject);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
   useEffect(() => {
     if (project) {
+      const { 
+        id, user_id, created_at, amountReceived, materials, staff, otherExpenses, 
+        ...editableData 
+      } = project;
       setFormData({
-        ...project,
-        endDate: project.endDate || '',
-        boreholeType: project.boreholeType || BoreholeType.SOLAR_MEDIUM,
+        ...editableData,
+        endDate: editableData.endDate || '',
+        boreholeType: editableData.boreholeType || BoreholeType.SOLAR_MEDIUM,
       });
     } else {
       setFormData(emptyProject);
@@ -45,6 +54,11 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
   
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedClientId = e.target.value;
+    if (selectedClientId === '--new--') {
+        setIsClientModalOpen(true);
+        e.target.value = formData.clientId || '';
+        return;
+    }
     const selectedClient = clients.find(c => c.id === selectedClientId);
     setFormData(prev => ({
         ...prev,
@@ -53,7 +67,19 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const newClient = await onSaveClient(clientData);
+    if (newClient) {
+        setFormData(prev => ({
+            ...prev,
+            clientId: newClient.id,
+            clientName: newClient.name,
+        }));
+    }
+    setIsClientModalOpen(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.clientId) {
       alert('Please fill in Project Name and select a Client.');
@@ -70,11 +96,17 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
         ...(project && { id: project.id })
     };
 
-    onSave(projectToSave);
+    await onSave(projectToSave);
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+      <ClientModal
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        onSave={handleSaveNewClient}
+        clientToEdit={null}
+      />
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl">
         <form onSubmit={handleSubmit}>
           <div className="flex justify-between items-center p-4 border-b">
@@ -95,6 +127,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
                     <select name="clientId" value={formData.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                       <option value="">Select a client...</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      <option value="--new--" className="font-bold text-blue-600">-- Add New Client --</option>
                     </select>
                 </div>
             </div>
