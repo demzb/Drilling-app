@@ -4,16 +4,16 @@ import { getInvoiceTotal, getInvoiceTotalPaid } from './invoiceUtils';
 
 
 export const generateInvoiceWordHtml = (invoice: Invoice): string => {
+  const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  const discount = invoice.discountAmount || 0;
+  const discountedSubtotal = subtotal - discount;
+  const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
   const totalAmount = getInvoiceTotal(invoice);
   const totalPaid = getInvoiceTotalPaid(invoice);
-  const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  const taxAmount = totalAmount - subtotal;
-  const depositAmount = totalAmount * 0.75;
-  const finalBalanceAmount = totalAmount * 0.25;
   const totalBalanceDue = totalAmount - totalPaid;
-  const isProformaPhase = invoice.invoiceType === InvoiceType.PROFORMA && invoice.status !== InvoiceStatus.AWAITING_FINAL_PAYMENT && invoice.status !== InvoiceStatus.PAID;
-  const amountDueLabel = isProformaPhase ? "Balance on Deposit:" : "Balance Due:";
-  const amountDueValue = isProformaPhase ? Math.max(0, depositAmount - totalPaid) : totalBalanceDue;
+
+  const amountDueLabel = "Balance Due:";
+  const amountDueValue = totalBalanceDue;
 
   const styles = {
     body: `font-family: Arial, sans-serif; color: #333; font-size: 12px;`,
@@ -49,7 +49,7 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
         <table style="${styles.headerTable}">
           <tr>
             <td style="${styles.headerCellLeft}">
-              <h1 style="font-size: 28px; margin: 0; color: #000;">${invoice.invoiceType}</h1>
+              <h1 style="font-size: 28px; margin: 0; color: #000;">Invoice</h1>
               <p style="margin: 0; color: #555;">${invoice.invoiceNumber}</p>
               ${invoice.projectName ? `<p style="margin-top: 5px; font-weight: bold; color: #2563EB;">Project: ${invoice.projectName}</p>` : ''}
               ${invoice.boreholeType ? `<p style="margin-top: 5px; color: #555;">${invoice.boreholeType}</p>` : ''}
@@ -94,10 +94,8 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
 
         <div style="${styles.totalsContainer}">
           <div style="${styles.totalsLeft}">
-            <h4 style="font-size: 11px; text-transform: uppercase; margin: 0 0 10px 0;">Payment Terms</h4>
-            <p style="margin: 0 0 5px 0;"><span style="font-weight: bold;">75% Deposit:</span> GMD ${depositAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-            <p style="margin: 0 0 5px 0;"><span style="font-weight: bold;">25% Final Balance:</span> GMD ${finalBalanceAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-            <p style="font-size: 10px; color: #555; margin-top: 10px;">Deposit is due to commence work. Final balance is due upon project completion.</p>
+             <h4 style="font-size: 11px; text-transform: uppercase; margin: 0 0 10px 0;">Notes</h4>
+             <p style="font-size: 10px; color: #555;">${invoice.notes}</p>
             <div style="margin-top: 15px;">
               <p style="font-weight: bold; margin: 0;">Amount in Words:</p>
               <p style="font-size: 10px; color: #555; text-transform: capitalize; margin: 0;">${numberToWords(amountDueValue)}</p>
@@ -108,19 +106,20 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
               <span style="${styles.totalLabel}">Subtotal:</span>
               <span style="${styles.totalValue}">GMD ${subtotal.toFixed(2)}</span>
             </div>
+            ${discount > 0 ? `
+              <div style="${styles.totalRow}">
+                <span style="${styles.totalLabel}">Discount:</span>
+                <span style="${styles.totalValue}; color: #22c55e;">- GMD ${discount.toFixed(2)}</span>
+              </div>
+            ` : ''}
             <div style="${styles.totalRow}">
               <span style="${styles.totalLabel}">Tax (${invoice.taxRate}%):</span>
               <span style="${styles.totalValue}">GMD ${taxAmount.toFixed(2)}</span>
             </div>
             <div style="${styles.totalRow}; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
-              <span style="${styles.totalLabel}; font-weight: bold;">Total Project Cost:</span>
+              <span style="${styles.totalLabel}; font-weight: bold;">Total:</span>
               <span style="${styles.totalValue};">GMD ${totalAmount.toFixed(2)}</span>
             </div>
-             ${isProformaPhase ? `
-             <div style="${styles.totalRow}">
-                <span style="${styles.totalLabel}">75% Deposit Due:</span>
-                <span style="${styles.totalValue}">GMD ${depositAmount.toFixed(2)}</span>
-            </div>` : ''}
             <div style="${styles.totalRow}">
               <span style="${styles.totalLabel}">Amount Paid:</span>
               <span style="${styles.totalValue}; color: #22c55e;">- GMD ${totalPaid.toFixed(2)}</span>
@@ -134,7 +133,7 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
         </div>
 
         <div style="${styles.footer}">
-          <p>${invoice.notes}</p>
+          <p>Thank you for your business. Please make payment to the specified account.</p>
         </div>
       </div>
     </div>

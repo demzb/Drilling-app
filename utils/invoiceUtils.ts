@@ -1,9 +1,10 @@
 import { Invoice } from '../types';
 
-export const getInvoiceTotal = (invoice: Pick<Invoice, 'lineItems' | 'taxRate'>): number => {
+export const getInvoiceTotal = (invoice: Pick<Invoice, 'lineItems' | 'taxRate' | 'discountAmount'>): number => {
     const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-    const taxAmount = subtotal * (invoice.taxRate / 100);
-    return subtotal + taxAmount;
+    const discountedSubtotal = subtotal - (invoice.discountAmount || 0);
+    const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
+    return discountedSubtotal + taxAmount;
 };
 
 export const getInvoiceTotalPaid = (invoice: Invoice): number => {

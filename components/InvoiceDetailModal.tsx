@@ -13,19 +13,17 @@ interface InvoiceDetailModalProps {
 const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose, invoice }) => {
   if (!isOpen) return null;
 
+  const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  const discount = invoice.discountAmount || 0;
+  const discountedSubtotal = subtotal - discount;
+  const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
+  
   const totalAmount = getInvoiceTotal(invoice);
   const totalPaid = getInvoiceTotalPaid(invoice);
-  
-  const title = invoice.invoiceType;
-  
-  const depositAmount = totalAmount * 0.75;
-  const finalBalanceAmount = totalAmount * 0.25;
   const totalBalanceDue = totalAmount - totalPaid;
 
-  const isProformaPhase = invoice.invoiceType === InvoiceType.PROFORMA && invoice.status !== InvoiceStatus.AWAITING_FINAL_PAYMENT && invoice.status !== InvoiceStatus.PAID;
-
-  const amountDueLabel = isProformaPhase ? "Balance on Deposit:" : "Balance Due:";
-  const amountDueValue = isProformaPhase ? Math.max(0, depositAmount - totalPaid) : totalBalanceDue;
+  const amountDueLabel = "Balance Due:";
+  const amountDueValue = totalBalanceDue;
 
   const handlePrint = () => {
     const printContents = document.getElementById('invoice-content')?.innerHTML;
@@ -81,43 +79,42 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div id="invoice-content" className="p-8 space-y-8 overflow-y-auto">
           {/* Header */}
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
-              <p className="text-gray-500">{invoice.invoiceNumber}</p>
-              {invoice.projectName && (
-                <p className="text-sm text-blue-600 font-medium mt-1">Project: {invoice.projectName}</p>
-              )}
-               {invoice.boreholeType && (
-                <p className="text-sm text-gray-500 font-medium mt-1">{invoice.boreholeType}</p>
-              )}
+          <div className="flex justify-between items-start border-b pb-6">
+            <div className="w-1/3">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase">Bill To</h3>
+              <p className="font-medium text-gray-800">{invoice.clientName}</p>
+              <p className="text-gray-600 whitespace-pre-line">{invoice.clientAddress}</p>
             </div>
-            <div className="text-right">
+
+            <div className="w-1/3 text-center">
                 <h2 className="text-xl font-bold text-blue-700 uppercase">YS BOREHOLE DRILLING COMPANY</h2>
                 <p className="text-xs text-gray-600">Deals in borehole drilling solar installation, plumbing and electrical specialist</p>
                 <p className="text-xs text-gray-500 mt-2">Brusubi the Gambia west Africa</p>
                 <p className="text-xs text-gray-500">Tel: +2203522014/7770568/2030995</p>
                 <p className="text-xs text-gray-500">Email: yusuphasambou1234@gmail.com</p>
             </div>
-          </div>
-          
-          {/* Client & Dates */}
-          <div className="grid grid-cols-2 gap-8 border-t pt-6">
-            <div>
-                <h3 className="text-sm font-semibold text-gray-500 uppercase">Bill To</h3>
-                <p className="font-medium text-gray-800">{invoice.clientName}</p>
-                <p className="text-gray-600 whitespace-pre-line">{invoice.clientAddress}</p>
-            </div>
-             <div className="text-right">
-                <div className="grid grid-cols-2">
-                    <span className="font-semibold text-gray-500">Invoice Date:</span>
-                    <span className="text-gray-800">{invoice.date}</span>
-                    <span className="font-semibold text-gray-500">Due Date:</span>
-                    <span className="text-gray-800">{invoice.dueDate}</span>
+
+            <div className="w-1/3 text-right">
+                <h1 className="text-3xl font-bold text-gray-800 uppercase">Invoice</h1>
+                <p className="text-gray-500 mt-1">{invoice.invoiceNumber}</p>
+                
+                <div className="mt-4 text-sm">
+                  <div className="grid grid-cols-2 gap-x-1">
+                      <span className="font-semibold text-gray-500">Invoice Date:</span>
+                      <span className="text-gray-800">{invoice.date}</span>
+                      <span className="font-semibold text-gray-500">Due Date:</span>
+                      <span className="text-gray-800">{invoice.dueDate}</span>
+                  </div>
                 </div>
             </div>
           </div>
           
+          {invoice.projectName && (
+            <div className="-mt-4">
+                 <p className="text-sm text-center text-blue-600 font-medium mt-1">Project: {invoice.projectName} - {invoice.boreholeType}</p>
+            </div>
+           )}
+
           {/* Line Items Table */}
           <div>
             <table className="w-full text-left">
@@ -145,12 +142,8 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
           {/* Totals & Payment Terms */}
           <div className="flex justify-between items-start pt-6 border-t">
             <div className="w-2/5 pr-4">
-                 <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Payment Terms</h4>
-                 <div className="text-sm text-gray-700 space-y-1">
-                    <p><span className="font-semibold">75% Deposit:</span> GMD {depositAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                    <p><span className="font-semibold">25% Final Balance:</span> GMD {finalBalanceAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                 </div>
-                 <p className="text-xs text-gray-500 mt-2">Deposit is due to commence work. Final balance is due upon project completion.</p>
+                 <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Notes</h4>
+                 <p className="text-sm text-gray-700 whitespace-pre-line">{invoice.notes}</p>
                  <div className="mt-4">
                     <p className="font-semibold text-sm text-gray-800">Amount in Words:</p>
                     <p className="text-xs text-gray-600 capitalize">{numberToWords(amountDueValue)}</p>
@@ -159,22 +152,22 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
             <div className="w-3/5 max-w-sm space-y-2">
                 <div className="flex justify-between">
                     <span className="text-gray-500">Subtotal:</span>
-                    <span className="font-medium text-gray-800">GMD {getInvoiceTotal(invoice).toFixed(2)}</span>
+                    <span className="font-medium text-gray-800">GMD {subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                    <span className="text-gray-500">Tax ({invoice.taxRate}%):</span>
-                    <span className="font-medium text-gray-800">GMD {(getInvoiceTotal(invoice) * invoice.taxRate / (100+invoice.taxRate)).toFixed(2)}</span>
-                </div>
-                 <div className="flex justify-between border-t pt-2 mt-2">
-                    <span className="font-semibold text-gray-800">Total Project Cost:</span>
-                    <span className="font-semibold text-gray-800">GMD {totalAmount.toFixed(2)}</span>
-                </div>
-                 {isProformaPhase && (
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">75% Deposit Due:</span>
-                        <span className="font-medium text-gray-800">GMD {depositAmount.toFixed(2)}</span>
+                {discount > 0 && (
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">Discount:</span>
+                        <span className="font-medium text-green-600">- GMD {discount.toFixed(2)}</span>
                     </div>
                 )}
+                <div className="flex justify-between">
+                    <span className="text-gray-500">Tax ({invoice.taxRate}%):</span>
+                    <span className="font-medium text-gray-800">GMD {taxAmount.toFixed(2)}</span>
+                </div>
+                 <div className="flex justify-between border-t pt-2 mt-2">
+                    <span className="font-semibold text-gray-800">Total:</span>
+                    <span className="font-semibold text-gray-800">GMD {totalAmount.toFixed(2)}</span>
+                </div>
                  <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Amount Paid:</span>
                     <span className="font-medium text-green-600">- GMD {totalPaid.toFixed(2)}</span>
@@ -188,7 +181,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
           
            {/* Footer Notes */}
           <div className="text-center text-xs text-gray-500 border-t pt-4">
-            <p>{invoice.notes}</p>
+            <p>Thank you for your business. Please make payment to the specified account.</p>
           </div>
         </div>
 

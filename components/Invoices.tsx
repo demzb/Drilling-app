@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment, Client, PaymentMethod } from '../types';
-import InvoiceModal from './ProformaInvoiceModal';
+import InvoiceModal from './InvoiceModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import ConfirmationModal from './ConfirmationModal';
 import InvoicePaymentModal from './InvoicePaymentModal';
@@ -26,7 +26,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
     const [isReminderModalOpen, setIsReminderModalOpen] = useState<boolean>(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('All');
-    const [typeFilter, setTypeFilter] = useState<string>('All');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
@@ -111,18 +110,11 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         setSelectedInvoice(invoice);
         setIsDetailModalOpen(true);
     };
-
-    const handleSendFinalInvoice = (invoice: Invoice) => {
-        const updatedInvoice = { ...invoice, status: InvoiceStatus.SENT, invoiceType: InvoiceType.INVOICE };
-        onSave(updatedInvoice);
-        handleViewDetails(updatedInvoice);
-    };
     
     const getStatusColor = (status: InvoiceStatus) => {
         switch (status) {
             case InvoiceStatus.PAID: return 'bg-green-500 text-white';
             case InvoiceStatus.PARTIALLY_PAID: return 'bg-yellow-500 text-white';
-            case InvoiceStatus.AWAITING_FINAL_PAYMENT: return 'bg-purple-500 text-white';
             case InvoiceStatus.SENT: return 'bg-blue-500 text-white';
             case InvoiceStatus.OVERDUE: return 'bg-red-500 text-white';
             case InvoiceStatus.DRAFT:
@@ -141,7 +133,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
             return 0;
         }
         
-        if (invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.AWAITING_FINAL_PAYMENT) {
+        if (invoice.status === InvoiceStatus.PAID) {
             return total;
         }
         
@@ -156,18 +148,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
             result = result.filter(invoice => invoice.status === statusFilter);
         }
 
-        if (typeFilter !== 'All') {
-            result = result.filter(invoice => invoice.invoiceType === typeFilter);
-        }
-
         result.sort((a, b) => {
             const dateA = new Date(a.date).getTime();
             const dateB = new Date(b.date).getTime();
-            return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+            return sortOrder === 'newest' ? dateB - dateA : dateA - b;
         });
 
         return result;
-    }, [invoices, statusFilter, typeFilter, sortOrder]);
+    }, [invoices, statusFilter, sortOrder]);
 
 
     return (
@@ -232,13 +220,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                             <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-md border-gray-300 shadow-sm text-sm">
                                 <option value="All">All</option>
                                 {Object.values(InvoiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="typeFilter" className="text-sm font-medium text-gray-700 mr-2">Type:</label>
-                            <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-md border-gray-300 shadow-sm text-sm">
-                                <option value="All">All</option>
-                                {Object.values(InvoiceType).map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
                         <button

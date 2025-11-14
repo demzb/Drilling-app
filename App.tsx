@@ -42,11 +42,8 @@ const App: React.FC = () => {
 
     // Update status based on payment
     if (updatedInvoice.status !== InvoiceStatus.DRAFT) {
-        const depositAmount = totalAmount * 0.75;
         if (totalPaid >= totalAmount - 0.01) {
             updatedInvoice.status = InvoiceStatus.PAID;
-        } else if (updatedInvoice.invoiceType === InvoiceType.PROFORMA && totalPaid >= depositAmount) {
-            updatedInvoice.status = InvoiceStatus.AWAITING_FINAL_PAYMENT;
         } else if (totalPaid > 0) {
             updatedInvoice.status = InvoiceStatus.PARTIALLY_PAID;
         } else {

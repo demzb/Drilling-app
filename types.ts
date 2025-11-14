@@ -55,14 +55,14 @@ export enum InvoiceStatus {
   DRAFT = 'Draft',
   SENT = 'Sent',
   PARTIALLY_PAID = 'Partially Paid',
-  AWAITING_FINAL_PAYMENT = 'Awaiting Final Payment',
   PAID = 'Paid',
   OVERDUE = 'Overdue',
 }
 
+// Fix: Add PROFORMA to the InvoiceType enum to allow for proforma invoices, resolving compilation errors.
 export enum InvoiceType {
-  PROFORMA = 'Proforma Invoice',
   INVOICE = 'Invoice',
+  PROFORMA = 'Proforma Invoice',
 }
 
 export enum BoreholeType {
@@ -110,6 +110,7 @@ export interface Invoice {
   lineItems: LineItem[];
   notes: string;
   taxRate: number; // Percentage
+  discountAmount: number; // Fixed discount amount
   status: InvoiceStatus;
   invoiceType: InvoiceType;
   projectId?: string; // Link to project
