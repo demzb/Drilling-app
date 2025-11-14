@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -7,348 +8,217 @@ import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
-import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment, Client, PaymentMethod } from './types';
-import { initialProjects, initialInvoices, initialEmployees, initialTransactions, initialClients } from './data';
+import Login from './components/Login';
+import { supabase } from './supabase';
+import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client } from './types';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState('Dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
-  const [clients, setClients] = useState<Client[]>(initialClients);
+  
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
 
-  const handleReceivePayment = useCallback((invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    if (!session) return;
+    setLoading(true);
+    try {
+      const [
+        { data: projectsData, error: projectsError },
+        { data: invoicesData, error: invoicesError },
+        { data: employeesData, error: employeesError },
+        { data: transactionsData, error: transactionsError },
+        { data: clientsData, error: clientsError },
+      ] = await Promise.all([
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').order('created_at', { ascending: false }),
+        supabase.from('employees').select('*').order('name', { ascending: true }),
+        supabase.from('transactions').select('*').order('date', { ascending: false }),
+        supabase.from('clients').select('*').order('name', { ascending: true }),
+      ]);
+      
+      if (projectsError) throw projectsError;
+      if (invoicesError) throw invoicesError;
+      if (employeesError) throw employeesError;
+      if (transactionsError) throw transactionsError;
+      if (clientsError) throw clientsError;
+      
+      setProjects(projectsData || []);
+      setInvoices(invoicesData || []);
+      setEmployees(employeesData || []);
+      setTransactions(transactionsData || []);
+      setClients(clientsData || []);
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+        setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      fetchData();
+      
+      const channels = supabase.channel('db-changes');
+      channels
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => fetchData())
+        .subscribe();
+        
+        return () => {
+            supabase.removeChannel(channels);
+        };
+    }
+  }, [session, fetchData]);
+
+  // --- CRUD Handlers ---
+
+  const handleReceivePayment = useCallback(async (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
+    const { data: invoiceToUpdate, error: fetchError } = await supabase.from('invoices').select('*').eq('id', invoiceId).single();
+    if (fetchError || !invoiceToUpdate) return console.error('Error fetching invoice for payment', fetchError);
+    
     const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
+    const payments = [...invoiceToUpdate.payments, newPayment];
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalAmount = getInvoiceTotal(invoiceToUpdate);
+    let newStatus = invoiceToUpdate.status;
+    if (totalPaid >= totalAmount) newStatus = 'Paid';
+    else if (totalPaid > 0) newStatus = 'Partially Paid';
+    
+    const updatedInvoice = { ...invoiceToUpdate, payments, status: newStatus };
+    
+    const { error: updateError } = await supabase.from('invoices').update(updatedInvoice).eq('id', invoiceId);
+    if(updateError) return console.error("Error updating invoice with payment", updateError);
+    
+    // Create transaction
+    const newTransaction = {
+        date: paymentDetails.date,
+        description: `Payment for Invoice #${invoiceToUpdate.invoiceNumber}`,
+        category: 'Client Payment',
+        type: TransactionType.INCOME,
+        amount: paymentDetails.amount,
+        isReadOnly: true,
+        user_id: session?.user.id,
+    };
+    await supabase.from('transactions').insert(newTransaction);
+    // Project amount update is handled via a trigger in Supabase for accuracy
+  }, [session]);
 
-    let updatedInvoice: Invoice | undefined;
-
-    const updatedInvoices = invoices.map(inv => {
-        if (inv.id === invoiceId) {
-            updatedInvoice = {
-                ...inv,
-                payments: [...inv.payments, newPayment]
-            };
-            return updatedInvoice;
-        }
-        return inv;
-    });
-
-    if (!updatedInvoice) return;
-
-    const totalAmount = getInvoiceTotal(updatedInvoice);
-    const totalPaid = getInvoiceTotalPaid(updatedInvoice);
-
-    // Update status based on payment
-    if (updatedInvoice.status !== InvoiceStatus.DRAFT) {
-        if (totalPaid >= totalAmount - 0.01) {
-            updatedInvoice.status = InvoiceStatus.PAID;
-        } else if (totalPaid > 0) {
-            updatedInvoice.status = InvoiceStatus.PARTIALLY_PAID;
-        } else {
-             if (updatedInvoice.status !== InvoiceStatus.SENT) {
-                updatedInvoice.status = InvoiceStatus.SENT;
-            }
-        }
-    }
-
-    setInvoices(updatedInvoices);
-
-    // Add new transaction for the payment
-    setTransactions(current => [
-        {
-            id: Date.now(),
-            date: newPayment.date,
-            description: `Payment for Invoice #${updatedInvoice?.invoiceNumber}`,
-            category: 'Client Payment',
-            type: TransactionType.INCOME,
-            amount: newPayment.amount,
-            sourceId: newPayment.id,
-            isReadOnly: true,
-        },
-        ...current
-    ]);
-
-    // Update Project amountReceived
-    if (updatedInvoice.projectId) {
-        setProjects(currentProjects => {
-            const projectIndex = currentProjects.findIndex(p => p.id === updatedInvoice!.projectId);
-            if (projectIndex !== -1) {
-                const totalPaidForProject = updatedInvoices
-                    .filter(inv => inv.projectId === updatedInvoice!.projectId)
-                    .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
-                
-                const newProjects = [...currentProjects];
-                const projectToUpdate = { ...newProjects[projectIndex] };
-                projectToUpdate.amountReceived = totalPaidForProject;
-
-                if (projectToUpdate.status === ProjectStatus.PLANNED && totalPaidForProject > 0) {
-                    projectToUpdate.status = ProjectStatus.IN_PROGRESS;
-                }
-                if (projectToUpdate.status === ProjectStatus.IN_PROGRESS && projectToUpdate.totalBudget > 0 && totalPaidForProject >= projectToUpdate.totalBudget) {
-                    projectToUpdate.status = ProjectStatus.COMPLETED;
-                }
-                newProjects[projectIndex] = projectToUpdate;
-                return newProjects;
-            }
-            return currentProjects;
-        });
-    }
-
-  }, [invoices]);
-
-  const handleSaveInvoice = useCallback((invoiceData: Omit<Invoice, 'id' | 'payments'> & { id?: string; payments?: Payment[] }) => {
-    const isEditing = !!invoiceData.id;
-    let newPayment: Payment | null = null;
-    let updatedInvoice: Invoice;
-
-    if (isEditing) {
-        const existingInvoice = invoices.find(inv => inv.id === invoiceData.id);
-        updatedInvoice = { ...existingInvoice!, ...invoiceData, id: invoiceData.id! };
+  const handleSaveInvoice = useCallback(async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const { id, ...dataToSave } = invoiceData;
+    if (id) {
+        await supabase.from('invoices').update(dataToSave).eq('id', id);
     } else {
-        updatedInvoice = { ...invoiceData, id: `inv-${Date.now()}`, payments: [] };
+        await supabase.from('invoices').insert({ ...dataToSave, user_id: session?.user.id, payments: [] });
     }
+  }, [session]);
 
-    // Special case: If a new invoice is created with status "Paid", auto-create a full payment record.
-    if (!isEditing && updatedInvoice.status === InvoiceStatus.PAID) {
-        const totalAmount = getInvoiceTotal(updatedInvoice);
-        newPayment = {
-            id: `pay-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            amount: totalAmount,
-            method: PaymentMethod.UNSPECIFIED,
-            notes: 'Auto-created full payment on invoice creation.',
-        };
-        updatedInvoice.payments.push(newPayment);
-    }
-    
-    const updatedInvoices = isEditing 
-        ? invoices.map(inv => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
-        : [updatedInvoice, ...invoices];
-
-    setInvoices(updatedInvoices);
-
-    // If a payment was auto-created, create a transaction and update project financials
-    if (newPayment) {
-         setTransactions(current => [
-            {
-                id: Date.now(),
-                date: newPayment!.date,
-                description: `Payment for Invoice #${updatedInvoice.invoiceNumber}`,
-                category: 'Client Payment',
-                type: TransactionType.INCOME,
-                amount: newPayment!.amount,
-                sourceId: newPayment!.id,
-                isReadOnly: true,
-            },
-            ...current
-        ]);
-        
-        if (updatedInvoice.projectId) {
-            setProjects(currentProjects => {
-                const projectIndex = currentProjects.findIndex(p => p.id === updatedInvoice.projectId);
-                if (projectIndex !== -1) {
-                    const totalPaidForProject = updatedInvoices
-                        .filter(inv => inv.projectId === updatedInvoice.projectId)
-                        .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
-                    
-                    const newProjects = [...currentProjects];
-                    newProjects[projectIndex].amountReceived = totalPaidForProject;
-                    return newProjects;
-                }
-                return currentProjects;
-            });
-        }
-    }
-    
-  }, [invoices]);
-
-
-  const handleDeleteInvoice = useCallback((invoiceId: string) => {
-    const invoiceToDelete = invoices.find(inv => inv.id === invoiceId);
-    if (!invoiceToDelete) return;
-
-    const updatedInvoices = invoices.filter(inv => inv.id !== invoiceId);
-    setInvoices(updatedInvoices);
-    
-    const paymentIdsToDelete = new Set(invoiceToDelete.payments.map(p => p.id));
-    setTransactions(currentTransactions => currentTransactions.filter(t => !paymentIdsToDelete.has(t.sourceId!)));
-
-    if (invoiceToDelete.projectId) {
-        setProjects(currentProjects => {
-            const projectIndex = currentProjects.findIndex(p => p.id === invoiceToDelete.projectId);
-            if (projectIndex !== -1) {
-                const totalPaid = updatedInvoices
-                    .filter(inv => inv.projectId === invoiceToDelete.projectId)
-                    .reduce((sum, inv) => sum + getInvoiceTotalPaid(inv), 0);
-                
-                const newProjects = [...currentProjects];
-                newProjects[projectIndex].amountReceived = totalPaid;
-                return newProjects;
-            }
-            return currentProjects;
-        });
-    }
-  }, [invoices]);
-
-  const handleSaveProject = useCallback((project: Omit<Project, 'id'> & { id?: string }) => {
-    if (project.id) { // Editing
-        setProjects(prev => prev.map(p => p.id === project.id ? { ...p, ...project } as Project : p));
-    } else { // Creating
-        const newProject = { ...project, id: `proj-${Date.now()}` };
-        setProjects(prev => [newProject, ...prev]);
-    }
+  const handleDeleteInvoice = useCallback(async (invoiceId: string) => {
+    await supabase.from('invoices').delete().eq('id', invoiceId);
   }, []);
+
+  const handleSaveProject = useCallback(async (projectData: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const { id, ...dataToSave } = projectData;
+    if (id) {
+      await supabase.from('projects').update(dataToSave).eq('id', id);
+    } else {
+      await supabase.from('projects').insert({ 
+          ...dataToSave, 
+          user_id: session?.user.id,
+          amountReceived: 0,
+          materials: [],
+          staff: [],
+          otherExpenses: [],
+      });
+    }
+  }, [session]);
   
-  const handleProjectDetailsUpdate = useCallback((updatedProject: Project) => {
-    setTransactions(currentTransactions => {
-        const originalProject = projects.find(p => p.id === updatedProject.id);
-        if (!originalProject) return currentTransactions;
-
-        let newTransactions = [...currentTransactions];
-
-        const manageTransaction = (item: {id: string, description: string, amount: number}, type: 'Material' | 'Staff' | 'Expense') => {
-            const existingTx = newTransactions.find(t => t.sourceId === item.id);
-            if (existingTx) {
-                existingTx.amount = item.amount;
-                existingTx.description = `${type}: ${item.description} for project ${updatedProject.name}`;
-            } else {
-                 newTransactions.unshift({
-                    id: Date.now() + Math.random(),
-                    date: new Date().toISOString().split('T')[0],
-                    description: `${type}: ${item.description} for project ${updatedProject.name}`,
-                    category: type === 'Staff' ? 'Payroll' : 'Project Expense',
-                    type: TransactionType.EXPENSE,
-                    amount: item.amount,
-                    sourceId: item.id,
-                    isReadOnly: true,
-                });
-            }
-        };
-
-        const originalMaterialIds = new Set(originalProject.materials.map(m => m.id));
-        updatedProject.materials.forEach(mat => manageTransaction({ id: mat.id, description: mat.name, amount: mat.quantity * mat.unitCost }, 'Material'));
-        const deletedMaterialIds = [...originalMaterialIds].filter(id => !updatedProject.materials.some(m => m.id === id));
-        
-        const getStaffSourceId = (s: {employeeId: number}) => `staff-${updatedProject.id}-${s.employeeId}`;
-        const originalStaffIds = new Set(originalProject.staff.map(getStaffSourceId));
-        updatedProject.staff.forEach(s => manageTransaction({ id: getStaffSourceId(s), description: `${s.employeeName} (${s.projectRole})`, amount: s.paymentAmount }, 'Staff'));
-        const deletedStaffIds = [...originalStaffIds].filter(id => !updatedProject.staff.some(s => getStaffSourceId(s) === id));
-
-        const originalExpenseIds = new Set(originalProject.otherExpenses.map(e => e.id));
-        updatedProject.otherExpenses.forEach(exp => manageTransaction({ id: exp.id, description: exp.description, amount: exp.amount }, 'Expense'));
-        const deletedExpenseIds = [...originalExpenseIds].filter(id => !updatedProject.otherExpenses.some(e => e.id === id));
-        
-        const allDeletedIds = new Set([...deletedMaterialIds, ...deletedStaffIds, ...deletedExpenseIds]);
-        newTransactions = newTransactions.filter(t => !allDeletedIds.has(t.sourceId!));
-
-        return newTransactions;
-    });
-
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-  }, [projects]);
-
-
-  const handleDeleteProject = useCallback((projectId: string) => {
-     const projectToDelete = projects.find(p => p.id === projectId);
-     if (!projectToDelete) return;
-
-     const sourceIdsToDelete = new Set();
-     projectToDelete.materials.forEach(m => sourceIdsToDelete.add(m.id));
-     projectToDelete.staff.forEach(s => sourceIdsToDelete.add(`staff-${projectId}-${s.employeeId}`));
-     projectToDelete.otherExpenses.forEach(e => sourceIdsToDelete.add(e.id));
-     
-     setTransactions(prev => prev.filter(t => !sourceIdsToDelete.has(t.sourceId!)));
-     setProjects(prev => prev.filter(p => p.id !== projectId));
-     setInvoices(prev => prev.map(inv => {
-         if (inv.projectId === projectId) {
-             return { ...inv, projectId: undefined, projectName: undefined };
-         }
-         return inv;
-     }));
-  }, [projects]);
-
-  const handleSaveEmployee = useCallback((employee: Omit<Employee, 'id'> & { id?: number }) => {
-    if (employee.id) { // Editing
-        setEmployees(prev => prev.map(e => e.id === employee.id ? employee as Employee : e));
-    } else { // Creating
-        const newEmployee = { ...employee, id: Date.now() };
-        setEmployees(prev => [newEmployee, ...prev]);
-    }
+  const handleProjectDetailsUpdate = useCallback(async (updatedProject: Project) => {
+    await supabase.from('projects').update(updatedProject).eq('id', updatedProject.id);
+    // Real-time updates will refresh data, auto-transactions should be handled by Supabase triggers/functions for consistency
   }, []);
 
-  const handleDeleteEmployee = useCallback((employeeId: number) => {
-    setEmployees(prev => prev.filter(e => e.id !== employeeId));
-
-    setProjects(currentProjects => {
-        const newProjects = [...currentProjects];
-        const staffSourceIdsToDelete = new Set();
-
-        newProjects.forEach(p => {
-            const staffIndex = p.staff.findIndex(s => s.employeeId === employeeId);
-            if (staffIndex > -1) {
-                staffSourceIdsToDelete.add(`staff-${p.id}-${employeeId}`);
-                p.staff.splice(staffIndex, 1);
-            }
-        });
-
-        if (staffSourceIdsToDelete.size > 0) {
-            setTransactions(currentTransactions => 
-                currentTransactions.filter(t => !staffSourceIdsToDelete.has(t.sourceId!))
-            );
-        }
-
-        return newProjects;
-    });
+  const handleDeleteProject = useCallback(async (projectId: string) => {
+    await supabase.from('projects').delete().eq('id', projectId);
   }, []);
-  
-  const handleSaveTransaction = useCallback((transaction: Omit<Transaction, 'id'> & { id?: number }) => {
-     if (transaction.id) {
-         setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction as Transaction : t));
+
+  const handleSaveEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
+    const { id, ...dataToSave } = employeeData;
+     if (id) {
+         await supabase.from('employees').update(dataToSave).eq('id', id);
      } else {
-         const newTransaction = { ...transaction, id: Date.now() };
-         setTransactions(prev => [newTransaction, ...prev]);
+         await supabase.from('employees').insert({ ...dataToSave, user_id: session?.user.id });
      }
+  }, [session]);
+
+  const handleDeleteEmployee = useCallback(async (employeeId: number) => {
+    await supabase.from('employees').delete().eq('id', employeeId);
+  }, []);
+  
+  const handleSaveTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
+     const { id, ...dataToSave } = transactionData;
+     if (id) {
+         await supabase.from('transactions').update(dataToSave).eq('id', id);
+     } else {
+         await supabase.from('transactions').insert({ ...dataToSave, user_id: session?.user.id });
+     }
+  }, [session]);
+
+  const handleDeleteTransaction = useCallback(async (transactionId: number) => {
+    await supabase.from('transactions').delete().eq('id', transactionId);
   }, []);
 
-  const handleDeleteTransaction = useCallback((transactionId: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== transactionId));
-  }, []);
-
-  const handleSaveClient = useCallback((client: Omit<Client, 'id'> & { id?: string }) => {
-    if (client.id) { // Editing
-        const updatedClient = client as Client;
-        setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-        // Also update clientName in projects and invoices
-        setProjects(prev => prev.map(p => p.clientId === updatedClient.id ? { ...p, clientName: updatedClient.name } : p));
-        setInvoices(prev => prev.map(i => i.clientId === updatedClient.id ? { ...i, clientName: updatedClient.name, clientAddress: updatedClient.address } : i));
-    } else { // Creating
-        const newClient = { ...client, id: `client-${Date.now()}` };
-        setClients(prev => [newClient, ...prev]);
+  const handleSaveClient = useCallback(async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+    const { id, ...dataToSave } = clientData;
+    if (id) {
+        await supabase.from('clients').update(dataToSave).eq('id', id);
+    } else {
+        await supabase.from('clients').insert({ ...dataToSave, user_id: session?.user.id });
     }
-  }, []);
+  }, [session]);
 
-  const handleDeleteClient = useCallback((clientId: string) => {
-    setClients(prev => prev.filter(c => c.id !== clientId));
-    // Unlink from projects but keep client name
-    setProjects(prev => prev.map(p => {
-        if (p.clientId === clientId) {
-            return { ...p, clientId: undefined };
-        }
-        return p;
-    }));
-    // Unlink from invoices but keep client name
-    setInvoices(prev => prev.map(i => {
-        if (i.clientId === clientId) {
-            return { ...i, clientId: undefined };
-        }
-        return i;
-    }));
+  const handleDeleteClient = useCallback(async (clientId: string) => {
+    await supabase.from('clients').delete().eq('id', clientId);
   }, []);
 
   const renderContent = () => {
+    if (loading && !session) return <div></div>; // Blank screen while session is being checked
+    if (!session) return <Login />;
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-full">
+            <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
+      );
+    }
+
     switch (activePage) {
       case 'Dashboard':
         return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
@@ -393,6 +263,10 @@ const App: React.FC = () => {
     }
   };
   
+  if (!session) {
+    return <Login />;
+  }
+
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       <Sidebar activePage={activePage} setActivePage={setActivePage} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
@@ -400,6 +274,7 @@ const App: React.FC = () => {
         <Header 
             currentPage={activePage} 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            onLogout={() => supabase.auth.signOut()}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
           {renderContent()}

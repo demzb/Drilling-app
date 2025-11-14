@@ -1,46 +1,44 @@
+import { GoogleGenAI } from "@google/genai";
 import { Transaction } from '../types';
 
 export const generateFinancialSummary = async (transactions: Transaction[]): Promise<string> => {
   if (transactions.length === 0) {
     return "No transaction data available to generate a summary.";
   }
+  
+  if (!process.env.API_KEY) {
+    console.error("Gemini API key not found. Please set it in your environment variables.");
+    return "Error: AI service is not configured correctly. API key is missing.";
+  }
 
   try {
-    // The server is already set up with an /api/financial-summary endpoint.
-    // We will call that instead of calling the Gemini API directly from the client.
-    const apiEndpoint = '/api/financial-summary';
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    const res = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ transactions }),
+    const prompt = `
+        You are a financial analyst AI for a borehole drilling company in The Gambia.
+        The currency is Gambian Dalasi (GMD).
+        Based on the following list of financial transactions, provide a concise and insightful summary in markdown format.
+        Include:
+        1. **Overall Performance:** Brief statement on financial health (e.g., profitable, loss-making, break-even).
+        2. **Key Figures:** Total Income, Total Expenses, and Net Profit/Loss in GMD.
+        3. **Key Insights:** Mention the largest expense category and the primary source of income based on the data.
+        4. **Actionable Recommendations:** Provide one or two brief, actionable recommendations for the business owner (e.g., "Consider reviewing material costs as they form the bulk of expenses," or "Focus on securing more large-scale solar projects as they are the main revenue driver.").
+        
+        Keep the entire summary to around 4-5 paragraphs.
+
+        Transaction data:
+        ${JSON.stringify(transactions.map(({id, sourceId, isReadOnly, ...t}) => t), null, 2)}
+    `;
+
+     const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
     });
 
-    if (!res.ok) {
-      // Try to parse the error from the backend, otherwise use the status text.
-      let errorMessage = `Request failed with status: ${res.status} ${res.statusText}`;
-      try {
-        const errorBody = await res.json();
-        if (errorBody.error) {
-          errorMessage = errorBody.error;
-        }
-      } catch (e) {
-        // Could not parse JSON body, stick with the status text.
-      }
-      console.error("Server returned an error:", errorMessage);
-      return `Failed to generate summary: ${errorMessage}`;
-    }
+    return response.text;
 
-    const data = await res.json();
-    if (data.summary) {
-      return data.summary;
-    } else {
-      return "Received an empty summary from the server.";
-    }
   } catch (error) {
-    console.error("Error fetching financial summary from backend:", error);
-    return "An error occurred while communicating with the application server. Please check your network connection and try again.";
+    console.error("Error fetching financial summary from Gemini API:", error);
+    return "An error occurred while communicating with the AI service. Please try again later.";
   }
 };

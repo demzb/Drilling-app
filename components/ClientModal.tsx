@@ -14,6 +14,9 @@ const emptyClient: Omit<Client, 'id'> = {
     email: '',
     phone: '',
     address: '',
+    // FIX: Add missing properties to satisfy the Omit<Client, 'id'> type. These are backend-managed fields.
+    user_id: '',
+    created_at: '',
 };
 
 const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, clientToEdit }) => {

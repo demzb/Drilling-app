@@ -17,6 +17,9 @@ const emptyEmployee: Omit<Employee, 'id'> = {
     startDate: new Date().toISOString().split('T')[0],
     avatarUrl: '',
     status: EmployeeStatus.ACTIVE,
+    // FIX: Add missing properties to satisfy the Omit<Employee, 'id'> type. These are backend-managed fields.
+    user_id: '',
+    created_at: '',
 };
 
 const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSave, employeeToEdit }) => {

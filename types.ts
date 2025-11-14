@@ -10,8 +10,10 @@ export interface Transaction {
   category: string;
   type: TransactionType;
   amount: number;
-  sourceId?: string; // Links to invoice ID, material ID, etc.
-  isReadOnly?: boolean; // To disable editing in Financials UI
+  sourceId?: string; 
+  isReadOnly?: boolean;
+  user_id: string;
+  created_at: string;
 }
 
 export enum EmployeeStatus {
@@ -29,6 +31,8 @@ export interface Employee {
   startDate: string;
   avatarUrl: string;
   status: EmployeeStatus;
+  user_id: string;
+  created_at: string;
 }
 
 export enum ProjectStatus {
@@ -59,7 +63,6 @@ export enum InvoiceStatus {
   OVERDUE = 'Overdue',
 }
 
-// Fix: Add PROFORMA to the InvoiceType enum to allow for proforma invoices, resolving compilation errors.
 export enum InvoiceType {
   INVOICE = 'Invoice',
   PROFORMA = 'Proforma Invoice',
@@ -97,6 +100,8 @@ export interface Client {
   email: string;
   phone: string;
   address: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface Invoice {
@@ -118,6 +123,8 @@ export interface Invoice {
   payments: Payment[];
   boreholeType?: BoreholeType;
   lastReminderSent?: string;
+  user_id: string;
+  created_at: string;
 }
 
 // Project Management Types
@@ -156,4 +163,6 @@ export interface Project {
   staff: StaffAssignment[];
   otherExpenses: OtherExpense[];
   boreholeType?: BoreholeType;
+  user_id: string;
+  created_at: string;
 }
