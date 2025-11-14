@@ -7,13 +7,11 @@ import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
-import Login from './components/Login';
 import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment, Client, PaymentMethod } from './types';
 import { initialProjects, initialInvoices, initialEmployees, initialTransactions, initialClients } from './data';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activePage, setActivePage] = useState('Dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -350,14 +348,6 @@ const App: React.FC = () => {
     }));
   }, []);
 
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-  };
-  
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
-
   const renderContent = () => {
     switch (activePage) {
       case 'Dashboard':
@@ -403,10 +393,6 @@ const App: React.FC = () => {
     }
   };
   
-  if (!isLoggedIn) {
-      return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       <Sidebar activePage={activePage} setActivePage={setActivePage} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
@@ -414,7 +400,6 @@ const App: React.FC = () => {
         <Header 
             currentPage={activePage} 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            onLogout={handleLogout}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
           {renderContent()}
