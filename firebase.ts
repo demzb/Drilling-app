@@ -1,21 +1,18 @@
-// Fix: Import firebase v9 compat libraries to fix module export errors.
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration from the user
+// IMPORTANT: Replace with your web app's Firebase configuration.
+// You can get this from your Firebase project settings in the Firebase console.
 const firebaseConfig = {
-  apiKey: "AIzaSyCL2T9eTICRPOooE3xPilhKj_k35jJJEkw",
-  authDomain: "drillsoft-125de.firebaseapp.com",
-  projectId: "drillsoft-125de",
-  storageBucket: "drillsoft-125de.firebasestorage.app",
-  messagingSenderId: "403912476034",
-  appId: "1:403912476034:web:558483ac35b9e5204f7b9b",
-  measurementId: "G-BQTJ6HFN6Z"
+  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  authDomain: "your-project-id.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "your-messaging-sender-id",
+  appId: "1:your-messaging-sender-id:web:your-app-id"
 };
 
-// Fix: Initialize Firebase using the compat syntax.
 // Initialize Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-export const auth = firebase.auth();
+const app = initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);

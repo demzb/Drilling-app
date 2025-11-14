@@ -387,6 +387,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                   <th className="px-4 py-2">Material</th>
                                   <th className="px-4 py-2 text-center">Qty</th>
                                   <th className="px-4 py-2 text-right">Unit Cost</th>
+                                  <th className="px-4 py-2 text-right">Total Cost</th>
                                   <th className="px-4 py-2 text-center">Actions</th>
                               </tr>
                           </thead>
@@ -396,6 +397,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                       <td className="px-4 py-2 font-medium text-gray-900">{mat.name}</td>
                                       <td className="px-4 py-2 text-center">{mat.quantity}</td>
                                       <td className="px-4 py-2 text-right">GMD {mat.unitCost.toLocaleString()}</td>
+                                      <td className="px-4 py-2 text-right font-medium">GMD {(mat.quantity * mat.unitCost).toLocaleString()}</td>
                                       <td className="px-4 py-2 text-center space-x-2">
                                           <button onClick={() => handleStartEditMaterial(mat)} className="font-medium text-blue-600 hover:underline">Edit</button>
                                           <button onClick={() => handleDeleteMaterial(mat)} className="font-medium text-red-600 hover:underline">Delete</button>
@@ -403,7 +405,7 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                   </tr>
                               ))}
                                {project.materials.length === 0 && (
-                                  <tr><td colSpan={4} className="text-center text-gray-500 py-4">No materials added yet.</td></tr>
+                                  <tr><td colSpan={5} className="text-center text-gray-500 py-4">No materials added yet.</td></tr>
                                )}
                           </tbody>
                       </table>

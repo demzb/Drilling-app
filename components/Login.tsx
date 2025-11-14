@@ -1,29 +1,48 @@
+
+
+
+
+
+
 import React, { useState } from 'react';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
-interface LoginProps {
-    onLoginSuccess: () => void;
-}
-
-const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-    const [username, setUsername] = useState('');
+const Login: React.FC = () => {
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError('');
 
-        // Simulate network request
-        setTimeout(() => {
-            if (username === 'tijan dem' && password === 'dem123') {
-                onLoginSuccess();
-            } else {
-                setError('Invalid username or password.');
+        try {
+            // Using a test user for demonstration. In a real app, users would register.
+            // For this demo, you can create a user in your Firebase console with:
+            // Email: admin@drillsoft.com
+            // Password: password123
+            await signInWithEmailAndPassword(auth, email, password);
+            // The onAuthStateChanged listener in App.tsx will handle the redirect.
+        } catch (err: any) {
+            switch (err.code) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    setError('Invalid email or password.');
+                    break;
+                case 'auth/invalid-email':
+                    setError('Please enter a valid email address.');
+                    break;
+                default:
+                    setError('An unexpected error occurred. Please try again.');
+                    break;
             }
+        } finally {
             setIsLoading(false);
-        }, 500);
+        }
     };
 
     return (
@@ -44,16 +63,16 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
                         <div className="mt-1">
                             <input
-                                id="username"
-                                name="username"
-                                type="text"
-                                autoComplete="username"
+                                id="email"
+                                name="email"
+                                type="email"
+                                autoComplete="email"
                                 required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                             />
                         </div>

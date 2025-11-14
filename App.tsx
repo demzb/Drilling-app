@@ -1,4 +1,10 @@
-import React, { useState, useCallback } from 'react';
+
+
+
+
+
+
+import React, { useState, useCallback, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -7,9 +13,12 @@ import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
+import Login from './components/Login';
 import { Project, Invoice, Employee, Transaction, ProjectStatus, InvoiceStatus, InvoiceType, TransactionType, Payment, Client, PaymentMethod } from './types';
 import { initialProjects, initialInvoices, initialEmployees, initialTransactions, initialClients } from './data';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './utils/invoiceUtils';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [activePage, setActivePage] = useState('Dashboard');
@@ -19,6 +28,22 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [clients, setClients] = useState<Client[]>(initialClients);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setUser(user);
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe(); // Cleanup subscription on unmount
+  }, []);
+
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
 
   const handleReceivePayment = useCallback((invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
     const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
@@ -393,6 +418,18 @@ const App: React.FC = () => {
     }
   };
   
+  if (loadingAuth) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-100">
+        <div className="text-gray-600">Loading Application...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+  
   return (
     <div className="flex h-screen bg-gray-100 font-sans">
       <Sidebar activePage={activePage} setActivePage={setActivePage} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
@@ -400,6 +437,7 @@ const App: React.FC = () => {
         <Header 
             currentPage={activePage} 
             toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            onLogout={handleLogout}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
           {renderContent()}
