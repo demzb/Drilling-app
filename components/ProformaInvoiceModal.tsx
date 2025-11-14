@@ -16,6 +16,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
     if (invoiceToEdit) {
       return { 
         ...invoiceToEdit,
+        discountAmount: invoiceToEdit.discountAmount || 0,
         boreholeType: invoiceToEdit.boreholeType || BoreholeType.SOLAR_MEDIUM,
       };
     }
@@ -29,6 +30,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       lineItems: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
       notes: 'Thank you for your business. Please make payment to the specified account.',
       taxRate: 0,
+      // FIX: Add missing discountAmount property
+      discountAmount: 0,
       projectId: undefined,
       projectName: undefined,
       status: InvoiceStatus.DRAFT,
@@ -48,10 +51,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
 
 
   useEffect(() => {
-    const newSubtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-    const taxAmount = newSubtotal * (invoice.taxRate / 100);
-    setTotal(newSubtotal + taxAmount);
-  }, [invoice.lineItems, invoice.taxRate]);
+    const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    const discount = parseFloat(String(invoice.discountAmount)) || 0;
+    const discountedSubtotal = subtotal - discount;
+    const taxAmount = discountedSubtotal * ((parseFloat(String(invoice.taxRate)) || 0) / 100);
+    setTotal(discountedSubtotal + taxAmount);
+  }, [invoice.lineItems, invoice.taxRate, invoice.discountAmount]);
 
 
   if (!isOpen) return null;
@@ -117,7 +122,10 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
         alert("Please select a client for the invoice.");
         return;
     }
-    onSave(invoice);
+    onSave({
+      ...invoice,
+      discountAmount: parseFloat(String(invoice.discountAmount)) || 0,
+    });
   };
   
   return (
@@ -214,6 +222,10 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                           {Object.values(InvoiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                    </div>
+                   <div className="flex items-center">
+                        <label className="text-sm font-medium text-gray-700 w-32">Discount (GMD)</label>
+                        <input type="number" name="discountAmount" value={invoice.discountAmount || ''} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0.00" step="0.01"/>
+                    </div>
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Tax Rate (%)</label>
                       <input type="number" name="taxRate" value={invoice.taxRate} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
