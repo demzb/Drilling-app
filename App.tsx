@@ -138,14 +138,18 @@ const App: React.FC = () => {
 
     const newTotalBudget = projectInvoices.reduce((sum, inv) => sum + getInvoiceTotal(inv as Invoice), 0);
 
-    const { error: projectUpdateError } = await supabase
+    const { data: updatedProject, error: projectUpdateError } = await supabase
         .from('projects')
         .update({ total_budget: newTotalBudget })
-        .eq('id', projectId);
+        .eq('id', projectId)
+        .select()
+        .single();
 
     if (projectUpdateError) {
         console.error("Error updating project budget:", projectUpdateError.message);
         alert(`Error updating project budget: ${projectUpdateError.message}`);
+    } else if (updatedProject) {
+        setProjects(current => current.map(p => p.id === projectId ? updatedProject : p));
     }
   }, []);
 
@@ -163,15 +167,20 @@ const App: React.FC = () => {
     if (totalPaid >= totalAmount) newStatus = 'Paid';
     else if (totalPaid > 0) newStatus = 'Partially Paid';
     
-    const { error: invoiceError } = await supabase
+    const { data: updatedInvoice, error: invoiceError } = await supabase
       .from('invoices')
       .update({ payments, status: newStatus })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .select()
+      .single();
       
     if (invoiceError) {
         console.error("Error updating invoice:", invoiceError.message);
         alert(`Error updating invoice: ${invoiceError.message}`);
         return;
+    }
+    if (updatedInvoice) {
+        setInvoices(current => current.map(i => i.id === invoiceId ? updatedInvoice : i));
     }
 
     // Update project amount_received and status
@@ -188,7 +197,6 @@ const App: React.FC = () => {
         const newAmountReceived = projectToUpdate.amount_received + paymentDetails.amount;
         let newProjectStatus = projectToUpdate.status;
         
-        // Don't downgrade status if it's already Completed
         if (projectToUpdate.total_budget > 0 && projectToUpdate.status !== ProjectStatus.COMPLETED) {
             const percentagePaid = (newAmountReceived / projectToUpdate.total_budget) * 100;
             if (percentagePaid >= 100) {
@@ -198,19 +206,24 @@ const App: React.FC = () => {
             }
         }
     
-        const { error: projectUpdateError } = await supabase
+        const { data: updatedProject, error: projectUpdateError } = await supabase
             .from('projects')
             .update({ amount_received: newAmountReceived, status: newProjectStatus })
-            .eq('id', projectToUpdate.id);
+            .eq('id', projectToUpdate.id)
+            .select()
+            .single();
     
         if (projectUpdateError) {
             console.error("Error updating project after payment:", projectUpdateError.message);
             alert(`Error updating project: ${projectUpdateError.message}`);
         }
+        if (updatedProject) {
+            setProjects(current => current.map(p => p.id === projectToUpdate.id ? updatedProject : p));
+        }
       }
     }
 
-    const newTransaction: Omit<Transaction, 'id' | 'created_at'> = {
+    const newTransactionData: Omit<Transaction, 'id' | 'created_at'> = {
         date: paymentDetails.date,
         description: `Payment for Invoice #${invoiceToUpdate.invoice_number}`,
         category: 'Client Payment',
@@ -219,8 +232,9 @@ const App: React.FC = () => {
         is_read_only: true,
         user_id: session.user.id,
     };
-    const { error: transactionError } = await supabase.from('transactions').insert(newTransaction);
+    const { data: createdTransaction, error: transactionError } = await supabase.from('transactions').insert(newTransactionData).select().single();
     if(transactionError) console.error("Error creating transaction:", transactionError.message);
+    if(createdTransaction) setTransactions(current => [createdTransaction, ...current]);
 
   }, [invoices, session]);
 
@@ -245,6 +259,14 @@ const App: React.FC = () => {
         alert(`Error saving invoice: ${error.message}`);
         return;
     }
+    
+    if (savedInvoice) {
+        if (id) {
+            setInvoices(current => current.map(i => i.id === id ? savedInvoice : i));
+        } else {
+            setInvoices(current => [savedInvoice, ...current]);
+        }
+    }
 
     const newProjectId = savedInvoice?.project_id;
 
@@ -266,6 +288,7 @@ const App: React.FC = () => {
         alert(`Error deleting invoice: ${error.message}`);
         return;
     }
+    setInvoices(current => current.filter(i => i.id !== invoiceId));
     
     if (projectId) {
         await updateProjectBudget(projectId);
@@ -277,13 +300,22 @@ const App: React.FC = () => {
     const { id, ...dataToSave } = projectData;
     const finalData = { ...dataToSave, user_id: session.user.id };
 
-    const { error } = id
-      ? await supabase.from('projects').update(finalData).eq('id', id)
-      : await supabase.from('projects').insert({ ...finalData, amount_received: 0, materials: [], staff: [], other_expenses: [] });
+    const { data: savedProject, error } = id
+      ? await supabase.from('projects').update(finalData).eq('id', id).select().single()
+      : await supabase.from('projects').insert({ ...finalData, amount_received: 0, materials: [], staff: [], other_expenses: [] }).select().single();
     
     if (error) {
         console.error("Error saving project:", error.message);
         alert(`Error saving project: ${error.message}`);
+        return;
+    }
+
+    if (savedProject) {
+        if (id) {
+            setProjects(current => current.map(p => p.id === id ? savedProject : p));
+        } else {
+            setProjects(current => [savedProject, ...current]);
+        }
     }
   }, [session]);
   
@@ -293,6 +325,8 @@ const App: React.FC = () => {
     if (error) {
         console.error("Error updating project details:", error.message);
         alert(`Error updating project details: ${error.message}`);
+    } else {
+        setProjects(current => current.map(p => p.id === id ? updatedProject : p));
     }
   }, []);
 
@@ -301,6 +335,8 @@ const App: React.FC = () => {
     if (error) {
         console.error("Error deleting project:", error.message);
         alert(`Error deleting project: ${error.message}`);
+    } else {
+        setProjects(current => current.filter(p => p.id !== projectId));
     }
   }, []);
 
@@ -309,13 +345,22 @@ const App: React.FC = () => {
     const { id, ...dataToSave } = employeeData;
     const finalData = { ...dataToSave, user_id: session.user.id };
     
-    const { error } = id
-      ? await supabase.from('employees').update(finalData).eq('id', id)
-      : await supabase.from('employees').insert(finalData);
+    const { data: savedEmployee, error } = id
+      ? await supabase.from('employees').update(finalData).eq('id', id).select().single()
+      : await supabase.from('employees').insert(finalData).select().single();
 
     if (error) {
         console.error("Error saving employee:", error.message);
         alert(`Error saving employee: ${error.message}`);
+        return;
+    }
+    
+    if (savedEmployee) {
+        if (id) {
+            setEmployees(current => current.map(e => e.id === id ? savedEmployee : e));
+        } else {
+            setEmployees(current => [savedEmployee, ...current]);
+        }
     }
   }, [session]);
 
@@ -324,6 +369,8 @@ const App: React.FC = () => {
     if (error) {
         console.error("Error deleting employee:", error.message);
         alert(`Error deleting employee: ${error.message}`);
+    } else {
+        setEmployees(current => current.filter(e => e.id !== employeeId));
     }
   }, []);
   
@@ -332,13 +379,22 @@ const App: React.FC = () => {
     const { id, ...dataToSave } = transactionData;
     const finalData = { ...dataToSave, user_id: session.user.id };
 
-    const { error } = id
-        ? await supabase.from('transactions').update(finalData).eq('id', id)
-        : await supabase.from('transactions').insert(finalData);
+    const { data: savedTransaction, error } = id
+        ? await supabase.from('transactions').update(finalData).eq('id', id).select().single()
+        : await supabase.from('transactions').insert(finalData).select().single();
 
     if (error) {
         console.error("Error saving transaction:", error.message);
         alert(`Error saving transaction: ${error.message}`);
+        return;
+    }
+
+    if (savedTransaction) {
+        if (id) {
+            setTransactions(current => current.map(t => t.id === id ? savedTransaction : t));
+        } else {
+            setTransactions(current => [savedTransaction, ...current]);
+        }
     }
   }, [session]);
 
@@ -347,6 +403,8 @@ const App: React.FC = () => {
     if (error) {
         console.error("Error deleting transaction:", error.message);
         alert(`Error deleting transaction: ${error.message}`);
+    } else {
+        setTransactions(current => current.filter(t => t.id !== transactionId));
     }
   }, []);
 
@@ -356,21 +414,27 @@ const App: React.FC = () => {
     const finalData = { ...dataToSave, user_id: session.user.id };
 
     if (id) {
-        const { data, error } = await supabase.from('clients').update(finalData).eq('id', id).select().single();
+        const { data: savedClient, error } = await supabase.from('clients').update(finalData).eq('id', id).select().single();
         if (error) {
             console.error("Error updating client:", error.message);
             alert(`Error updating client: ${error.message}`);
             return null;
         }
-        return data;
+        if (savedClient) {
+            setClients(current => current.map(c => c.id === id ? savedClient : c));
+        }
+        return savedClient;
     } else {
-        const { data, error } = await supabase.from('clients').insert(finalData).select().single();
+        const { data: savedClient, error } = await supabase.from('clients').insert(finalData).select().single();
         if (error) {
             console.error("Error creating client:", error.message);
             alert(`Error creating client: ${error.message}`);
             return null;
         }
-        return data;
+        if (savedClient) {
+            setClients(current => [savedClient, ...current]);
+        }
+        return savedClient;
     }
   }, [session]);
 
@@ -379,6 +443,8 @@ const App: React.FC = () => {
     if (error) {
         console.error("Error deleting client:", error.message);
         alert(`Error deleting client: ${error.message}`);
+    } else {
+        setClients(current => current.filter(c => c.id !== clientId));
     }
   }, []);
 
