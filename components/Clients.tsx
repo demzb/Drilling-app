@@ -37,6 +37,15 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
       setClientToDelete(null);
     }
   };
+  
+  const getInitials = (name: string): string => {
+    if (!name) return '?';
+    const words = name.split(' ');
+    if (words.length > 1) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <>
@@ -57,51 +66,85 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
           </>
         }
       />
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-700">Client Directory</h3>
-          <button onClick={handleOpenAddModal} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">Client Directory</h2>
+          <button onClick={handleOpenAddModal} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors shadow-md flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
             Add Client
           </button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3">Name</th>
-                <th scope="col" className="px-6 py-3">Contact Person</th>
-                <th scope="col" className="px-6 py-3">Contact Info</th>
-                <th scope="col" className="px-6 py-3">Address</th>
-                <th scope="col" className="px-6 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.length > 0 ? clients.map((client) => (
-                <tr key={client.id} className="bg-white border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">
-                    {client.name}
-                  </td>
-                  <td className="px-6 py-4">{client.contact_person || 'N/A'}</td>
-                  <td className="px-6 py-4">
-                    <div>{client.email}</div>
-                    <div className="text-gray-400">{client.phone}</div>
-                  </td>
-                  <td className="px-6 py-4">{client.address}</td>
-                  <td className="px-6 py-4 text-right space-x-4">
-                    <button onClick={() => handleOpenEditModal(client)} className="font-medium text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => handleDeleteRequest(client)} className="font-medium text-red-600 hover:underline">Delete</button>
-                  </td>
-                </tr>
-              )) : (
-                 <tr>
-                    <td colSpan={5} className="text-center text-gray-500 py-10">
-                        No clients found. Add a client to get started.
-                    </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+
+        {clients.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {clients.map((client) => (
+              <div key={client.id} className="bg-gradient-to-br from-white to-slate-50 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border-l-4 border-blue-500 flex flex-col">
+                <div className="p-6 text-center flex-grow">
+                    <div className="w-24 h-24 rounded-full mx-auto -mt-12 border-4 border-white shadow-md bg-blue-700 flex flex-col items-center justify-center text-white select-none">
+                        <span className="text-4xl font-extrabold tracking-tighter">{getInitials(client.name)}</span>
+                        <span className="text-[10px] tracking-[0.2em] uppercase -mt-1">Client</span>
+                    </div>
+                  <h3 className="mt-4 text-xl font-bold text-gray-800 truncate">{client.name}</h3>
+                  <p className="text-sm text-blue-600 font-semibold h-5">{client.contact_person}</p>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200 space-y-3 text-left">
+                     {client.email && (
+                        <div className="flex items-center text-sm text-gray-600">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-blue-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                             <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                             <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                           </svg>
+                           <a href={`mailto:${client.email}`} className="hover:text-blue-500 break-all">{client.email}</a>
+                        </div>
+                     )}
+                     {client.phone && (
+                       <div className="flex items-center text-sm text-gray-600">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-blue-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                            </svg>
+                           <a href={`tel:${client.phone}`} className="hover:text-blue-500">{client.phone}</a>
+                       </div>
+                     )}
+                      {client.address && (
+                       <div className="flex items-start text-sm text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-blue-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                            </svg>
+                           <p className="break-words">{client.address}</p>
+                       </div>
+                      )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50/50 px-6 py-3 flex justify-around items-center border-t">
+                   <button onClick={() => handleOpenEditModal(client)} className="flex items-center text-sm font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg p-2 transition-colors duration-200">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                        <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                      </svg>
+                      Edit
+                  </button>
+                  <button onClick={() => handleDeleteRequest(client)} className="flex items-center text-sm font-medium text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-colors duration-200">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                     Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 py-16 bg-white rounded-lg shadow-md border-2 border-dashed">
+             <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.282-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.124-1.282.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No clients found</h3>
+            <p className="mt-1 text-sm text-gray-500">Get started by adding a new client.</p>
+          </div>
+        )}
       </div>
     </>
   );

@@ -131,24 +131,27 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
 
   const recentTransactions = transactions.slice(0, 5);
 
-  const dateButtonClasses = (range: string) => `px-3 py-1 text-sm font-medium rounded-md transition-colors ${activeRange === range ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
+  const dateButtonClasses = (range: string) => `px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 transform hover:scale-105 shadow-md ${activeRange === range ? 'bg-white text-blue-600 font-bold ring-2 ring-offset-2 ring-offset-blue-500 ring-white' : 'bg-white/20 text-white hover:bg-white/30'}`;
 
   return (
     <div className="space-y-6">
       {/* Date Filter Controls */}
-      <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200">
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 rounded-xl shadow-lg border border-blue-400">
         <div className="flex flex-wrap items-center justify-between gap-4">
-            <h3 className="text-md font-semibold text-gray-700 whitespace-nowrap">Filter Data</h3>
+            <div className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zM13 10a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1h-6a1 1 0 01-1-1v-2zM3 16a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" /></svg>
+                <h3 className="text-lg font-bold text-white whitespace-nowrap">Filter Dashboard</h3>
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
-                <button onClick={() => handleSetDateRange('30d')} className={dateButtonClasses('30d')}>Last 30 Days</button>
-                <button onClick={() => handleSetDateRange('90d')} className={dateButtonClasses('90d')}>Last 90 Days</button>
+                <button onClick={() => handleSetDateRange('30d')} className={dateButtonClasses('30d')}>30 Days</button>
+                <button onClick={() => handleSetDateRange('90d')} className={dateButtonClasses('90d')}>90 Days</button>
                 <button onClick={() => handleSetDateRange('year')} className={dateButtonClasses('year')}>This Year</button>
                 <button onClick={() => handleSetDateRange('all')} className={dateButtonClasses('all')}>All Time</button>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-                <input type="date" value={startDate} onChange={(e) => handleDateInputChange(e, 'start')} className="px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                <span className="text-gray-500">to</span>
-                <input type="date" value={endDate} onChange={(e) => handleDateInputChange(e, 'end')} className="px-2 py-1 text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                <input type="date" value={startDate} onChange={(e) => handleDateInputChange(e, 'start')} className="px-3 py-2 text-sm bg-white/20 text-white border border-white/30 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-white [color-scheme:dark]" />
+                <span className="text-white font-semibold">to</span>
+                <input type="date" value={endDate} onChange={(e) => handleDateInputChange(e, 'end')} className="px-3 py-2 text-sm bg-white/20 text-white border border-white/30 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-white [color-scheme:dark]" />
             </div>
         </div>
       </div>

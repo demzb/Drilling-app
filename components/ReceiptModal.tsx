@@ -150,7 +150,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, invoice, p
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex justify-center items-center p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b no-print">
           <h2 className="text-xl font-semibold text-gray-800">Payment Receipt Preview</h2>

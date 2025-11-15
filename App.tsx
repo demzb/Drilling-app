@@ -9,6 +9,7 @@ import HumanResources from './components/HumanResources';
 import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
+import Reporting from './components/Reporting';
 import Login from './components/Login';
 import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client, ProjectStatus } from './types';
 import { getInvoiceTotal } from './utils/invoiceUtils';
@@ -154,10 +155,10 @@ const App: React.FC = () => {
   }, []);
 
   // --- CRUD Handlers (rewritten for Supabase) ---
-  const handleReceivePayment = useCallback(async (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
-    if (!session) return;
+  const handleReceivePayment = useCallback(async (invoiceId: string, paymentDetails: Omit<Payment, 'id'>): Promise<{ updatedInvoice: Invoice, newPayment: Payment } | null> => {
+    if (!session) return null;
     const invoiceToUpdate = invoices.find(inv => inv.id === invoiceId);
-    if (!invoiceToUpdate) return;
+    if (!invoiceToUpdate) return null;
 
     const newPayment: Payment = { ...paymentDetails, id: `pay-${Date.now()}` };
     const payments = [...invoiceToUpdate.payments, newPayment];
@@ -167,7 +168,7 @@ const App: React.FC = () => {
     if (totalPaid >= totalAmount) newStatus = 'Paid';
     else if (totalPaid > 0) newStatus = 'Partially Paid';
     
-    const { data: updatedInvoice, error: invoiceError } = await supabase
+    const { data: updatedInvoiceData, error: invoiceError } = await supabase
       .from('invoices')
       .update({ payments, status: newStatus })
       .eq('id', invoiceId)
@@ -177,11 +178,15 @@ const App: React.FC = () => {
     if (invoiceError) {
         console.error("Error updating invoice:", invoiceError.message);
         alert(`Error updating invoice: ${invoiceError.message}`);
-        return;
+        return null;
     }
-    if (updatedInvoice) {
-        setInvoices(current => current.map(i => i.id === invoiceId ? updatedInvoice : i));
+    
+    if (!updatedInvoiceData) {
+        return null;
     }
+
+    const updatedInvoice = updatedInvoiceData as Invoice;
+    setInvoices(current => current.map(i => i.id === invoiceId ? updatedInvoice : i));
 
     // Update project amount_received and status
     if (invoiceToUpdate.project_id) {
@@ -236,6 +241,7 @@ const App: React.FC = () => {
     if(transactionError) console.error("Error creating transaction:", transactionError.message);
     if(createdTransaction) setTransactions(current => [createdTransaction, ...current]);
 
+    return { updatedInvoice, newPayment };
   }, [invoices, session]);
 
   const handleSaveInvoice = useCallback(async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
@@ -469,7 +475,9 @@ const App: React.FC = () => {
       case 'Clients':
         return <Clients clients={clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} />;
       case 'Human Resources':
-        return <HumanResources employees={employees} onSaveEmployee={handleSaveEmployee} onDeleteEmployee={handleDeleteEmployee} />;
+        return <HumanResources employees={employees} projects={projects} onSaveEmployee={handleSaveEmployee} onDeleteEmployee={handleDeleteEmployee} />;
+      case 'Reporting':
+        return <Reporting projects={projects} transactions={transactions} invoices={invoices} clients={clients} employees={employees} />;
       default:
         return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
     }

@@ -175,3 +175,40 @@ export interface Message {
   user_id: string;
   user_email: string;
 }
+
+// Reporting Types
+export interface ProjectProfitabilityReportItem {
+  projectName: string;
+  clientName: string;
+  status: ProjectStatus;
+  amountReceived: number;
+  totalCosts: number;
+  netProfit: number;
+}
+
+export interface FinancialReportItem {
+    date: string;
+    description: string;
+    category: string;
+    type: TransactionType;
+    amount: number;
+}
+
+export interface InvoiceReportItem {
+    invoiceNumber: string;
+    clientName: string;
+    date: string;
+    dueDate: string;
+    status: InvoiceStatus;
+    total: number;
+    paid: number;
+    balance: number;
+}
+
+export interface ProfitAndLossStatementItem {
+    description: string;
+    amount: number | null;
+    isHeader?: boolean;
+    isTotal?: boolean;
+    isSubItem?: boolean;
+}

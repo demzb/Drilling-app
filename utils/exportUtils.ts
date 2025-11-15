@@ -1,15 +1,98 @@
-import { Invoice, InvoiceType, InvoiceStatus, Payment, Project } from '../types';
+import { Invoice, InvoiceType, InvoiceStatus, Payment, Project, FinancialReportItem, ProjectProfitabilityReportItem, InvoiceReportItem } from '../types';
 import { numberToWords } from './numberToWords';
 import { getInvoiceTotal, getInvoiceTotalPaid } from './invoiceUtils';
 
+// --- Generic Export Helpers ---
+
+const escapeCsvCell = (cellData: any): string => {
+    const stringData = String(cellData ?? '');
+    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
+        return `"${stringData.replace(/"/g, '""')}"`;
+    }
+    return stringData;
+};
+
+const downloadFile = (content: string, fileName: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// --- Report Exporters ---
+export const exportReportAsCsv = (headers: string[], data: any[], fileName: string) => {
+    const rows = data.map(item => headers.map(header => {
+        // Convert header to camelCase to match object keys
+        const key = header.replace(/\s+/g, ' ').replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => index === 0 ? word.toLowerCase() : word.toUpperCase()).replace(/\s/g, '');
+        return escapeCsvCell(item[key]);
+    }).join(','));
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+};
+
+const generateReportHtml = (title: string, headers: string[], data: any[]): string => {
+    const headerHtml = headers.map(h => `<th style="padding: 8px; border: 1px solid #ddd; text-align: left; background-color: #f2f2f2;">${h}</th>`).join('');
+    const bodyHtml = data.map(item => {
+        const rowHtml = headers.map(header => {
+            const key = header.replace(/\s+/g, ' ').replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => index === 0 ? word.toLowerCase() : word.toUpperCase()).replace(/\s/g, '');
+            const isNumeric = typeof item[key] === 'number';
+            return `<td style="padding: 8px; border: 1px solid #ddd; text-align: ${isNumeric ? 'right' : 'left'};">${isNumeric ? (item[key] as number).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : (item[key] ?? '')}</td>`;
+        }).join('');
+        return `<tr>${rowHtml}</tr>`;
+    }).join('');
+
+    return `
+        <div style="font-family: Arial, sans-serif;">
+            <h1 style="text-align: center;">${title}</h1>
+            <p style="text-align: center; color: #555; font-size: 12px;">Generated on: ${new Date().toLocaleDateString()}</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>${headerHtml}</tr>
+                </thead>
+                <tbody>
+                    ${bodyHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
+};
+
+export const exportReportAsWord = (title: string, headers: string[], data: any[], fileName: string) => {
+    const htmlContent = generateReportHtml(title, headers, data);
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' "+
+            "xmlns:w='urn:schemas-microsoft-com:office:word' "+
+            "xmlns='http://www.w3.org/TR/REC-html40'>"+
+            "<head><meta charset='utf-8'><title>Export</title></head><body>";
+    const footer = "</body></html>";
+    const sourceHTML = header + htmlContent + footer;
+    downloadFile(sourceHTML, fileName, 'application/vnd.ms-word');
+};
+
+export const printReport = (title: string, headers: string[], data: any[]) => {
+    const htmlContent = generateReportHtml(title, headers, data);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(`<html><head><title>${title}</title></head><body>${htmlContent}</body></html>`);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    }
+};
+
+// --- Specific Document Generators (Invoices, Receipts) ---
 
 export const generateInvoiceWordHtml = (invoice: Invoice): string => {
-  // Fix: Changed property to snake_case.
   const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  // Fix: Changed property to snake_case.
   const discount = invoice.discount_amount || 0;
   const discountedSubtotal = subtotal - discount;
-  // Fix: Changed property to snake_case.
   const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
   const totalAmount = getInvoiceTotal(invoice);
   const totalPaid = getInvoiceTotalPaid(invoice);
@@ -37,7 +120,6 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
     footer: `margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 10px; color: #777;`
   };
 
-  // Fix: Changed property to snake_case.
   const lineItemsHtml = invoice.line_items.map(item => `
     <tr>
       <td style="${styles.td}">${item.description}</td>
@@ -54,11 +136,8 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
           <tr>
             <td style="${styles.headerCellLeft}">
               <h1 style="font-size: 28px; margin: 0; color: #000;">Invoice</h1>
-              {/* Fix: Changed property to snake_case. */}
               <p style="margin: 0; color: #555;">${invoice.invoice_number}</p>
-              {/* Fix: Changed property to snake_case. */}
               ${invoice.project_name ? `<p style="margin-top: 5px; font-weight: bold; color: #2563EB;">Project: ${invoice.project_name}</p>` : ''}
-              {/* Fix: Changed property to snake_case. */}
               ${invoice.borehole_type ? `<p style="margin-top: 5px; color: #555;">${invoice.borehole_type}</p>` : ''}
             </td>
             <td style="${styles.headerCellRight}">
@@ -75,14 +154,11 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
           <tr>
             <td style="width: 50%; vertical-align: top;">
               <h3 style="font-size: 11px; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Bill To</h3>
-              {/* Fix: Changed property to snake_case. */}
               <p style="font-weight: bold; margin: 0;">${invoice.client_name}</p>
-              {/* Fix: Changed property to snake_case. */}
               <p style="margin: 0; white-space: pre-line;">${invoice.client_address}</p>
             </td>
             <td style="width: 50%; text-align: right; vertical-align: top;">
               <p style="margin: 0;"><span style="font-weight: bold;">Invoice Date:</span> ${invoice.date}</p>
-              {/* Fix: Changed property to snake_case. */}
               <p style="margin: 0;"><span style="font-weight: bold;">Due Date:</span> ${invoice.due_date}</p>
             </td>
           </tr>
@@ -123,7 +199,6 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
               </div>
             ` : ''}
             <div style="${styles.totalRow}">
-              {/* Fix: Changed property to snake_case. */}
               <span style="${styles.totalLabel}">Tax (${invoice.tax_rate}%):</span>
               <span style="${styles.totalValue}">GMD ${taxAmount.toFixed(2)}</span>
             </div>
@@ -241,49 +316,28 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
   `;
 };
 
-const escapeCsvCell = (cellData: any): string => {
-    const stringData = String(cellData ?? '');
-    if (stringData.includes(',') || stringData.includes('"') || stringData.includes('\n')) {
-        return `"${stringData.replace(/"/g, '""')}"`;
-    }
-    return stringData;
-};
-
 export const exportProjectsToCSV = (projects: Project[]) => {
     const headers = [
         'ID', 'Name', 'Client', 'Location', 'Start Date', 'End Date',
         'Status', 'Borehole Type', 'Total Budget', 'Amount Received'
     ];
 
-    // Fix: Changed properties to snake_case.
     const rows = projects.map(p => [
         p.id, p.name, p.client_name, p.location, p.start_date, p.end_date || 'N/A',
         p.status, p.borehole_type || 'N/A', p.total_budget, p.amount_received
     ].map(escapeCsvCell).join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "projects_export.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(csvContent, 'projects_export.csv', 'text/csv;charset=utf-8;');
 };
 
 export const printProjectsList = (projects: Project[]) => {
     const tableRows = projects.map(p => `
         <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">${p.name}</td>
-            {/* Fix: Changed property to snake_case. */}
             <td style="padding: 8px; border: 1px solid #ddd;">${p.client_name}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${p.status}</td>
-            {/* Fix: Changed property to snake_case. */}
             <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.total_budget.toLocaleString()}</td>
-            {/* Fix: Changed property to snake_case. */}
             <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.amount_received.toLocaleString()}</td>
         </tr>
     `).join('');
@@ -342,7 +396,6 @@ export const exportProjectDetailToCSV = (project: Project) => {
     };
 
     // Section 1: Project Summary
-    // Fix: Changed properties to snake_case.
     const summaryData = [
         ['Project Name', project.name],
         ['Client Name', project.client_name],
@@ -360,10 +413,8 @@ export const exportProjectDetailToCSV = (project: Project) => {
     // Section 2: Financials
     const totalMaterialCost = project.materials.reduce((acc, mat) => acc + (mat.quantity * mat.unitCost), 0);
     const totalStaffCost = project.staff.reduce((acc, s) => acc + s.paymentAmount, 0);
-    // Fix: Changed property to snake_case.
     const totalOtherCost = project.other_expenses.reduce((acc, exp) => acc + exp.amount, 0);
     const totalProjectCost = totalMaterialCost + totalStaffCost + totalOtherCost;
-    // Fix: Changed property to snake_case.
     const netProfit = project.amount_received - totalProjectCost;
     
     const financialData = [
@@ -419,13 +470,5 @@ export const exportProjectDetailToCSV = (project: Project) => {
         );
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `project_${project.id}_details.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(csvContent, `project_${project.id}_details.csv`, 'text/csv;charset=utf-8;');
 };

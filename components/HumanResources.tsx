@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { Employee, EmployeeStatus } from '../types';
+import { Employee, EmployeeStatus, Project } from '../types';
 import EmployeeModal from './EmployeeModal';
 import ConfirmationModal from './ConfirmationModal';
+import EmployeePaymentSummaryModal from './EmployeePaymentSummaryModal';
 
 interface HumanResourcesProps {
   employees: Employee[];
+  projects: Project[];
   onSaveEmployee: (employee: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   onDeleteEmployee: (employeeId: number) => void;
 }
 
-const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmployee, onDeleteEmployee }) => {
+const HumanResources: React.FC<HumanResourcesProps> = ({ employees, projects, onSaveEmployee, onDeleteEmployee }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [isPaymentSummaryModalOpen, setIsPaymentSummaryModalOpen] = useState(false);
+  const [selectedEmployeeForSummary, setSelectedEmployeeForSummary] = useState<Employee | null>(null);
 
   const handleOpenAddModal = () => {
     setEmployeeToEdit(null);
@@ -23,6 +27,11 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
   const handleOpenEditModal = (employee: Employee) => {
     setEmployeeToEdit(employee);
     setIsModalOpen(true);
+  };
+
+  const handleOpenPaymentSummary = (employee: Employee) => {
+    setSelectedEmployeeForSummary(employee);
+    setIsPaymentSummaryModalOpen(true);
   };
 
   const handleSaveEmployee = async (employeeData: Omit<Employee, 'id' | 'created_at' | 'user_id'> & { id?: number }) => {
@@ -83,6 +92,12 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
           </>
         }
       />
+      <EmployeePaymentSummaryModal
+        isOpen={isPaymentSummaryModalOpen}
+        onClose={() => setIsPaymentSummaryModalOpen(false)}
+        employee={selectedEmployeeForSummary}
+        projects={projects}
+      />
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-800">Employee Directory</h2>
@@ -131,20 +146,21 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
                     </div>
                   </div>
 
-                  <div className="bg-gray-50/50 px-6 py-3 flex justify-around items-center border-t">
-                     <button onClick={() => handleOpenEditModal(employee)} className="flex items-center text-sm font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg p-2 transition-colors duration-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                          <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-                        </svg>
-                        Edit
-                    </button>
-                    <button onClick={() => handleDeleteRequest(employee)} className="flex items-center text-sm font-medium text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-colors duration-200">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                       Delete
-                    </button>
+                  <div className="bg-gray-50/50 px-2 py-2 flex justify-center items-center border-t">
+                    <div className="flex flex-wrap justify-center gap-x-1 gap-y-1">
+                        <button onClick={() => handleOpenEditModal(employee)} className="flex items-center text-xs font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-md p-2 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+                            Edit
+                        </button>
+                        <button onClick={() => handleDeleteRequest(employee)} className="flex items-center text-xs font-medium text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-md p-2 transition-colors duration-200">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                           Delete
+                        </button>
+                         <button onClick={() => handleOpenPaymentSummary(employee)} className="flex items-center text-xs font-medium text-gray-600 hover:text-green-700 hover:bg-green-50 rounded-md p-2 transition-colors duration-200">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>
+                            Payments
+                        </button>
+                    </div>
                   </div>
                 </div>
               );
