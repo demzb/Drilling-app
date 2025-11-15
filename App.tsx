@@ -248,7 +248,11 @@ const App: React.FC = () => {
     }
 
     const { id, ...dataToSave } = invoiceData;
-    const finalData = { ...dataToSave, user_id: session.user.id };
+    const finalData = { 
+        ...dataToSave, 
+        user_id: session.user.id,
+        due_date: dataToSave.due_date || null // FIX: Ensure empty due date is saved as null
+    };
 
     const { data: savedInvoice, error } = id
       ? await supabase.from('invoices').update(finalData).eq('id', id).select().single()
@@ -298,7 +302,11 @@ const App: React.FC = () => {
   const handleSaveProject = useCallback(async (projectData: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
     if (!session) return;
     const { id, ...dataToSave } = projectData;
-    const finalData = { ...dataToSave, user_id: session.user.id };
+    const finalData = { 
+        ...dataToSave, 
+        user_id: session.user.id,
+        end_date: dataToSave.end_date || null // FIX: Ensure empty end date is saved as null
+    };
 
     const { data: savedProject, error } = id
       ? await supabase.from('projects').update(finalData).eq('id', id).select().single()
@@ -453,7 +461,7 @@ const App: React.FC = () => {
       case 'Dashboard':
         return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
       case 'Financials':
-        return <Financials transactions={transactions} onSaveTransaction={handleSaveTransaction} onDeleteTransaction={handleDeleteTransaction} />;
+        return <Financials transactions={transactions} projects={projects} onSaveTransaction={handleSaveTransaction} onDeleteTransaction={handleDeleteTransaction} />;
       case 'Projects':
         return <Projects projects={projects} employees={employees} clients={clients} onDeleteProject={handleDeleteProject} onSaveProject={handleSaveProject} onUpdateProjectDetails={handleProjectDetailsUpdate} onSaveClient={handleSaveClient} />;
       case 'Invoices':
@@ -493,7 +501,7 @@ const App: React.FC = () => {
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onLogout={handleLogout}
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-blue-50 p-6">
           {renderContent()}
         </main>
       </div>

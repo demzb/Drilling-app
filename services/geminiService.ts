@@ -1,6 +1,6 @@
-import { Transaction } from '../types';
+import { Transaction, Project } from '../types';
 
-export const generateFinancialSummary = async (transactions: Transaction[]): Promise<string> => {
+export const generateFinancialSummary = async (transactions: Transaction[], projects: Project[]): Promise<string> => {
   if (transactions.length === 0) {
     return "No transaction data available to generate a summary.";
   }
@@ -15,7 +15,7 @@ export const generateFinancialSummary = async (transactions: Transaction[]): Pro
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ transactions }),
+      body: JSON.stringify({ transactions, projects }),
     });
 
     if (!response.ok) {

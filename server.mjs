@@ -10,10 +10,10 @@ app.use(express.json({ limit: '5mb' })); // Increase limit for potentially large
 const PORT = process.env.PORT || 3001;
 
 app.post('/api/generate-summary', async (req, res) => {
-  const { transactions } = req.body;
+  const { transactions, projects } = req.body;
 
-  if (!transactions || !Array.isArray(transactions)) {
-    return res.status(400).json({ error: 'Invalid transactions data provided.' });
+  if (!transactions || !Array.isArray(transactions) || !projects || !Array.isArray(projects)) {
+    return res.status(400).json({ error: 'Invalid transactions or projects data provided.' });
   }
 
   if (transactions.length === 0) {
@@ -28,20 +28,31 @@ app.post('/api/generate-summary', async (req, res) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+    // Clean project data for a more focused prompt
+    const projectsForPrompt = projects.map(p => ({
+        name: p.name,
+        status: p.status,
+        total_budget: p.total_budget,
+        amount_received: p.amount_received
+    }));
+
     const prompt = `
         You are a financial analyst AI for a borehole drilling company in The Gambia.
         The currency is Gambian Dalasi (GMD).
-        Based on the following list of financial transactions, provide a concise and insightful summary in markdown format.
+        Based on the following list of financial transactions AND project data, provide a concise and insightful summary in markdown format.
         Include:
-        1. **Overall Performance:** Brief statement on financial health (e.g., profitable, loss-making, break-even).
-        2. **Key Figures:** Total Income, Total Expenses, and Net Profit/Loss in GMD.
-        3. **Key Insights:** Mention the largest expense category and the primary source of income based on the data.
-        4. **Actionable Recommendations:** Provide one or two brief, actionable recommendations for the business owner (e.g., "Consider reviewing material costs as they form the bulk of expenses," or "Focus on securing more large-scale solar projects as they are the main revenue driver.").
-        
+        1. **Overall Performance:** Brief statement on financial health (e.g., profitable, loss-making, break-even) based on the transactions.
+        2. **Key Figures:** Total Income, Total Expenses, and Net Profit/Loss in GMD from the transaction data.
+        3. **Key Insights:** Mention the largest expense category and the primary source of income.
+        4. **Actionable Recommendations:** Provide one or two brief, actionable recommendations for the business owner. **Crucially, consider the status and budget of projects in your recommendations.** For example, if a large project is 'In Progress' but payments received are low compared to its budget, you might suggest following up on invoices. If many projects are 'Completed' with good profit margins, suggest pursuing similar work. Use the provided project data to make your recommendations more specific and relevant.
+
         Keep the entire summary to around 4-5 paragraphs.
 
         Transaction data:
-        ${JSON.stringify(transactions.map(({id, sourceId, isReadOnly, user_id, created_at, ...t}) => t), null, 2)}
+        ${JSON.stringify(transactions.map(({id, source_id, is_read_only, user_id, created_at, ...t}) => t), null, 2)}
+
+        Project data:
+        ${JSON.stringify(projectsForPrompt, null, 2)}
     `;
 
      const response = await ai.models.generateContent({

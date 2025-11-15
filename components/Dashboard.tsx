@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
+import { Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Card from './Card';
-import { Project, Transaction, Invoice, TransactionType, InvoiceStatus } from '../types';
+import { Project, Transaction, Invoice, TransactionType, InvoiceStatus, ProjectStatus } from '../types';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
 
 interface DashboardProps {
@@ -10,7 +10,7 @@ interface DashboardProps {
   invoices: Invoice[];
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', '#E6B333'];
 
 const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices }) => {
   const [startDate, setStartDate] = useState<string>('');
@@ -88,23 +88,18 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
   const outstandingAmount = invoices
     .filter(inv => inv.status !== InvoiceStatus.PAID && inv.status !== InvoiceStatus.DRAFT)
     .reduce((sum, inv) => sum + (getInvoiceTotal(inv) - getInvoiceTotalPaid(inv)), 0);
+    
+  const inProgressProjectsCount = useMemo(() => 
+    projects.filter(p => p.status === ProjectStatus.IN_PROGRESS).length,
+    [projects]
+  );
+  
+  const completedProjectsCount = useMemo(() =>
+    projects.filter(p => p.status === ProjectStatus.COMPLETED).length,
+    [projects]
+  );
 
   // --- Chart Data Calculations ---
-  // Monthly financial overview bar chart data
-  const monthlyData = filteredTransactions.reduce((acc, t) => {
-    const date = new Date(t.date);
-    if (isNaN(date.getTime())) return acc;
-    const monthKey = t.date.substring(0, 7);
-    if (!acc[monthKey]) {
-      acc[monthKey] = { name: date.toLocaleString('default', { month: 'short', year: '2-digit' }), Income: 0, Expense: 0 };
-    }
-    if (t.type === TransactionType.INCOME) acc[monthKey].Income += t.amount;
-    else acc[monthKey].Expense += t.amount;
-    return acc;
-  }, {} as Record<string, {name: string, Income: number, Expense: number}>);
-    
-  const revenueData = Object.keys(monthlyData).sort().map(key => monthlyData[key]);
-
   // Expense breakdown donut chart data
   const expenseByCategory = filteredTransactions
     .filter(t => t.type === TransactionType.EXPENSE)
@@ -159,51 +154,49 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card 
+          title="Projects In Progress" 
+          value={`${inProgressProjectsCount}`} 
+          color="blue"
+          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+        />
+        <Card 
+          title="Completed Projects" 
+          value={`${completedProjectsCount}`} 
+          color="green"
+          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
         <Card 
           title="Total Revenue" 
           value={`GMD ${totalRevenue.toLocaleString()}`} 
+          color="purple"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} 
         />
         <Card 
           title="Total Expenses" 
           value={`GMD ${totalExpenses.toLocaleString()}`} 
+          color="red"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
         />
         <Card 
           title="Net Profit" 
           value={`GMD ${netProfit.toLocaleString()}`} 
+          color="yellow"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
         />
          <Card 
           title="Outstanding Amount" 
           value={`GMD ${outstandingAmount.toLocaleString()}`} 
+          color="orange"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Financial Overview</h3>
-          {revenueData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={revenueData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short' }).format(value as number)} />
-                <Tooltip formatter={(value: number) => `GMD ${value.toLocaleString()}`} />
-                <Legend />
-                <Bar dataKey="Income" fill="#3B82F6" />
-                <Bar dataKey="Expense" fill="#EF4444" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-[300px] text-gray-500">No financial data for selected period.</div>
-          )}
-        </div>
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Expense Breakdown</h3>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b-2 border-blue-200 pb-2">Expense Breakdown</h3>
           {expenseData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -235,7 +228,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
       {/* At a Glance Section */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Overdue Invoices</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b-2 border-red-200 pb-2">Overdue Invoices</h3>
           <div className="space-y-3">
             {overdueInvoices.length > 0 ? overdueInvoices.map(inv => (
               <div key={inv.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
@@ -252,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
-           <h3 className="text-lg font-semibold text-gray-700 mb-4">Recent Transactions (All Time)</h3>
+           <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b-2 border-green-200 pb-2">Recent Transactions (All Time)</h3>
             <div className="space-y-2">
               {recentTransactions.length > 0 ? recentTransactions.map(t => (
                 <div key={t.id} className="flex justify-between items-center border-b pb-2">

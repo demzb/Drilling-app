@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
-import { Transaction, TransactionType } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Transaction, TransactionType, Project } from '../types';
 import { generateFinancialSummary } from '../services/geminiService';
 import TransactionModal from './TransactionModal';
 import ConfirmationModal from './ConfirmationModal';
 
 interface FinancialsProps {
   transactions: Transaction[];
+  projects: Project[];
   onSaveTransaction: (transaction: Omit<Transaction, 'id' | 'created_at' | 'user_id'> & { id?: number }) => Promise<void>;
   onDeleteTransaction: (transactionId: number) => void;
 }
 
-const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction, onDeleteTransaction }) => {
+const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveTransaction, onDeleteTransaction }) => {
   const [aiSummary, setAiSummary] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -25,7 +26,7 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction
   const handleGenerateSummary = async () => {
     setIsLoading(true);
     setAiSummary('');
-    const summary = await generateFinancialSummary(transactions);
+    const summary = await generateFinancialSummary(transactions, projects);
     setAiSummary(summary);
     setIsLoading(false);
   };
@@ -57,6 +58,14 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction
       setTransactionToDelete(null);
     }
   };
+
+  const displaySummary = useMemo(() => {
+    if (!aiSummary) return { __html: '' };
+    const html = aiSummary
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br />');
+    return { __html: html };
+  }, [aiSummary]);
 
 
   return (
@@ -118,7 +127,7 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction
         </div>
         {aiSummary && (
           <div className="prose max-w-none bg-gray-50 p-4 rounded-md border border-gray-200">
-             <div className="whitespace-pre-wrap font-sans">{aiSummary}</div>
+             <div dangerouslySetInnerHTML={displaySummary} />
           </div>
         )}
          {isLoading && !aiSummary && (
@@ -169,7 +178,7 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, onSaveTransaction
                     GMD {t.amount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-center space-x-2">
-                    {t.isReadOnly ? (
+                    {t.is_read_only ? (
                         <span className="italic text-gray-400 text-xs" title="This transaction is managed automatically by a project or invoice.">Read-only</span>
                     ) : (
                         <>
