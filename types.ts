@@ -10,8 +10,8 @@ export interface Transaction {
   category: string;
   type: TransactionType;
   amount: number;
-  sourceId?: string; 
-  isReadOnly?: boolean;
+  source_id?: string; 
+  is_read_only?: boolean;
   user_id: string;
   created_at: string;
 }
@@ -28,8 +28,8 @@ export interface Employee {
   role: string;
   email: string;
   phone: string;
-  startDate: string;
-  avatarUrl: string;
+  start_date: string;
+  avatar_url: string;
   status: EmployeeStatus;
   user_id: string;
   created_at: string;
@@ -96,7 +96,7 @@ export interface Payment {
 export interface Client {
   id: string;
   name: string;
-  contactPerson?: string;
+  contact_person?: string;
   email: string;
   phone: string;
   address: string;
@@ -106,23 +106,23 @@ export interface Client {
 
 export interface Invoice {
   id: string;
-  invoiceNumber: string;
-  clientId?: string;
-  clientName: string;
-  clientAddress: string;
+  invoice_number: string;
+  client_id?: string;
+  client_name: string;
+  client_address: string;
   date: string;
-  dueDate: string;
-  lineItems: LineItem[];
+  due_date: string;
+  line_items: LineItem[];
   notes: string;
-  taxRate: number; // Percentage
-  discountAmount: number; // Fixed discount amount
+  tax_rate: number; // Percentage
+  discount_amount: number; // Fixed discount amount
   status: InvoiceStatus;
-  invoiceType: InvoiceType;
-  projectId?: string; // Link to project
-  projectName?: string; // For easy display
+  invoice_type: InvoiceType;
+  project_id?: string; // Link to project
+  project_name?: string; // For easy display
   payments: Payment[];
-  boreholeType?: BoreholeType;
-  lastReminderSent?: string;
+  borehole_type?: BoreholeType;
+  last_reminder_sent?: string;
   user_id: string;
   created_at: string;
 }
@@ -151,18 +151,18 @@ export interface OtherExpense {
 export interface Project {
   id: string;
   name: string;
-  clientId?: string;
-  clientName: string;
+  client_id?: string;
+  client_name: string;
   location: string;
-  startDate: string;
-  endDate?: string;
+  start_date: string;
+  end_date?: string;
   status: ProjectStatus;
-  totalBudget: number;
-  amountReceived: number;
+  total_budget: number;
+  amount_received: number;
   materials: Material[];
   staff: StaffAssignment[];
-  otherExpenses: OtherExpense[];
-  boreholeType?: BoreholeType;
+  other_expenses: OtherExpense[];
+  borehole_type?: BoreholeType;
   user_id: string;
   created_at: string;
 }

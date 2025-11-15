@@ -94,8 +94,10 @@ const InvoicePaymentModal: React.FC<InvoicePaymentModalProps> = ({ isOpen, onClo
 
                     <div className="p-6 space-y-4">
                         <div>
-                            <p className="text-sm text-gray-500">Invoice #{invoice.invoiceNumber}</p>
-                            <p className="font-semibold text-lg text-gray-800">{invoice.clientName}</p>
+                            {/* Fix: Changed property to snake_case. */}
+                            <p className="text-sm text-gray-500">Invoice #{invoice.invoice_number}</p>
+                            {/* Fix: Changed property to snake_case. */}
+                            <p className="font-semibold text-lg text-gray-800">{invoice.client_name}</p>
                         </div>
                          <div className="bg-gray-50 p-3 rounded-md grid grid-cols-3 gap-2 text-center">
                             <div>

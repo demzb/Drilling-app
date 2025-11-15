@@ -14,8 +14,8 @@ const emptyEmployee: Omit<Employee, 'id' | 'user_id' | 'created_at'> = {
     gender: '',
     email: '',
     phone: '',
-    startDate: new Date().toISOString().split('T')[0],
-    avatarUrl: '',
+    start_date: new Date().toISOString().split('T')[0],
+    avatar_url: '',
     status: EmployeeStatus.ACTIVE,
 };
 
@@ -98,7 +98,7 @@ const EmployeeModal: React.FC<EmployeeModalProps> = ({ isOpen, onClose, onSave, 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                                <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-gray-700">Phone Number</label>

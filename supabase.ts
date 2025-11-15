@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Use the public anonymous key for all frontend requests.
-// This key is safe to be exposed in a browser environment.
-const SUPABASE_URL = "https://djvrvcgwmfzgszkcenbo.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdnJ2Y2d3bWZ6Z3N6a2NlbmJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxNDU4NTMsImV4cCI6MjA3ODcyMTg1M30.XXeMDgjkUEZQkHb97mxcQ_e8S0E7HVRzIKn057ruPTI";
+// IMPORTANT: Replace with your actual Supabase Project URL and Anon Key
+const SUPABASE_URL = "https://xpptkbuqkajtewlwmdsh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwcHRrYnVxa2FqdGV3bHdtZHNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMxOTUxOTAsImV4cCI6MjA3ODc3MTE5MH0.9x8btfBy3J-Tz6m1R_1HAKBfV2tei-c6AZpaOfZCiRU";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

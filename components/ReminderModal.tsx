@@ -23,7 +23,7 @@ const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSend, 
       setIsSending(false);
       onClose();
       // In a real app, you might want a more robust notification system (e.g., a toast).
-      alert(`Reminder for invoice #${invoice.invoiceNumber} has been marked as sent.`);
+      alert(`Reminder for invoice #${invoice.invoice_number} has been marked as sent.`);
     }, 1000);
   };
 
@@ -42,7 +42,8 @@ const ReminderModal: React.FC<ReminderModalProps> = ({ isOpen, onClose, onSend, 
             <label className="block text-sm font-medium text-gray-700">To:</label>
             <input 
               type="text" 
-              value={`${invoice.clientName}`} 
+              // Fix: Changed property to snake_case.
+              value={`${invoice.client_name}`} 
               readOnly 
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm"
             />

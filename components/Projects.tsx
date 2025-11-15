@@ -138,12 +138,12 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
                 {projects.map(project => (
                     <div key={project.id} className={`bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 border-l-4 ${getStatusColor(project.status)}`}>
                         <div className="p-5">
-                            <p className="text-sm text-gray-500">{project.clientName}</p>
+                            <p className="text-sm text-gray-500">{project.client_name}</p>
                             <h3 className="font-bold text-lg text-gray-800 truncate">{project.name}</h3>
                             <div className="mb-4">
                                 <p className="text-xs text-gray-400">{project.location}</p>
-                                {project.boreholeType && (
-                                    <p className="text-xs font-semibold text-blue-600 mt-1">{project.boreholeType}</p>
+                                {project.borehole_type && (
+                                    <p className="text-xs font-semibold text-blue-600 mt-1">{project.borehole_type}</p>
                                 )}
                             </div>
 
@@ -154,16 +154,16 @@ const Projects: React.FC<ProjectsProps> = ({ projects, employees, clients, onDel
                                 </div>
                                  <div className="flex justify-between">
                                     <span className="font-medium text-gray-600">Budget:</span>
-                                    <span className="font-semibold text-gray-800">GMD {project.totalBudget.toLocaleString()}</span>
+                                    <span className="font-semibold text-gray-800">GMD {project.total_budget.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-medium text-gray-600">Received:</span>
-                                    <span className="font-semibold text-green-600">GMD {project.amountReceived.toLocaleString()}</span>
+                                    <span className="font-semibold text-green-600">GMD {project.amount_received.toLocaleString()}</span>
                                 </div>
                             </div>
                             <div className="mt-4">
                                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                 <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${project.totalBudget > 0 ? (project.amountReceived / project.totalBudget) * 100 : 0}%`}}></div>
+                                 <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${project.total_budget > 0 ? (project.amount_received / project.total_budget) * 100 : 0}%`}}></div>
                                </div>
                             </div>
                         </div>

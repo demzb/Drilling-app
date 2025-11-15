@@ -29,7 +29,7 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
     const finalEmployeeData = {
         ...employeeData,
         status: employeeData.status || EmployeeStatus.ACTIVE,
-        avatarUrl: employeeData.avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`
+        avatar_url: employeeData.avatar_url || `https://i.pravatar.cc/150?u=${Date.now()}`
     };
     await onSaveEmployee(finalEmployeeData);
     setIsModalOpen(false);
@@ -99,7 +99,7 @@ const HumanResources: React.FC<HumanResourcesProps> = ({ employees, onSaveEmploy
                     <div>{employee.email}</div>
                     <div className="text-gray-400">{employee.phone}</div>
                   </td>
-                  <td className="px-6 py-4">{employee.startDate}</td>
+                  <td className="px-6 py-4">{employee.start_date}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                       employee.status === EmployeeStatus.ACTIVE 

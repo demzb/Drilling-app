@@ -32,14 +32,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
     const getNextInvoiceNumber = () => {
         const prefix = 'INV';
         const currentYear = new Date().getFullYear();
-        const yearInvoices = invoices.filter(inv => inv.invoiceNumber.startsWith(`${prefix}-${currentYear}-`));
+        const yearInvoices = invoices.filter(inv => inv.invoice_number.startsWith(`${prefix}-${currentYear}-`));
 
         if (yearInvoices.length === 0) {
             return `${prefix}-${currentYear}-001`;
         }
 
         const maxNumber = yearInvoices.reduce((max, inv) => {
-            const numPart = parseInt(inv.invoiceNumber.split('-')[2], 10);
+            const numPart = parseInt(inv.invoice_number.split('-')[2], 10);
             return !isNaN(numPart) && numPart > max ? numPart : max;
         }, 0);
 
@@ -118,7 +118,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
     const getAmountDueNow = (invoice: Invoice): number => {
         const total = getInvoiceTotal(invoice);
         
-        if (invoice.invoiceType === InvoiceType.INVOICE) {
+        if (invoice.invoice_type === InvoiceType.INVOICE) {
             return total;
         }
 
@@ -192,7 +192,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                 title="Delete Invoice"
                 message={
                     <>
-                        Are you sure you want to delete invoice "<strong>{invoiceToDelete?.invoiceNumber}</strong>"? This action cannot be undone.
+                        Are you sure you want to delete invoice "<strong>{invoiceToDelete?.invoice_number}</strong>"? This action cannot be undone.
                     </>
                 }
             />
@@ -245,8 +245,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                                 const balance = total - totalPaid;
                                 return (
                                 <tr key={invoice.id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-blue-600">{invoice.invoiceNumber}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">{invoice.clientName}</td>
+                                    <td className="px-6 py-4 font-medium text-blue-600">{invoice.invoice_number}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">{invoice.client_name}</td>
                                     <td className="px-6 py-4">{invoice.date}</td>
                                     <td className="px-6 py-4 text-right font-medium text-gray-800">
                                         GMD {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -261,8 +261,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                                          <span className={`px-3 py-1 rounded-md text-xs font-semibold tracking-wide uppercase ${getStatusColor(invoice.status)}`}>
                                             {invoice.status}
                                         </span>
-                                        {invoice.lastReminderSent && (
-                                            <p className="text-xs text-gray-400 mt-1" title={`Last reminder sent on ${invoice.lastReminderSent}`}>
+                                        {invoice.last_reminder_sent && (
+                                            <p className="text-xs text-gray-400 mt-1" title={`Last reminder sent on ${invoice.last_reminder_sent}`}>
                                                 Reminded
                                             </p>
                                         )}

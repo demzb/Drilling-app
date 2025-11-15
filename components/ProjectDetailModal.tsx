@@ -59,14 +59,16 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
   }, [project.staff]);
 
   const totalOtherCost = useMemo(() => {
-    return project.otherExpenses.reduce((acc, exp) => acc + exp.amount, 0);
-  }, [project.otherExpenses]);
+    // Fix: Changed property to snake_case.
+    return project.other_expenses.reduce((acc, exp) => acc + exp.amount, 0);
+  }, [project.other_expenses]);
   
   const totalProjectCost = useMemo(() => {
     return totalMaterialCost + totalStaffCost + totalOtherCost;
   }, [totalMaterialCost, totalStaffCost, totalOtherCost]);
 
-  const netProfit = project.amountReceived - totalProjectCost;
+  // Fix: Changed property to snake_case.
+  const netProfit = project.amount_received - totalProjectCost;
   
   const availableEmployees = useMemo(() => {
     const assignedIds = new Set(project.staff.map(s => s.employeeId));
@@ -260,12 +262,15 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
     }
 
     const updatedExpenses = editingExpense
-      ? project.otherExpenses.map(exp => 
+      // Fix: Changed property to snake_case.
+      ? project.other_expenses.map(exp => 
           exp.id === editingExpense.id ? { ...exp, description: newExpense.description, amount } : exp
         )
-      : [...project.otherExpenses, { id: `exp-${Date.now()}`, description: newExpense.description, amount }];
+      // Fix: Changed property to snake_case.
+      : [...project.other_expenses, { id: `exp-${Date.now()}`, description: newExpense.description, amount }];
     
-    onUpdateProject({ ...project, otherExpenses: updatedExpenses });
+    // Fix: Changed property to snake_case.
+    onUpdateProject({ ...project, other_expenses: updatedExpenses });
     handleCancelEditExpense();
   };
 
@@ -275,8 +280,10 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
       title: 'Delete Expense',
       message: <>Are you sure you want to delete the expense "<strong>{expense.description}</strong>"?</>,
       onConfirm: () => {
-        const updatedExpenses = project.otherExpenses.filter(exp => exp.id !== expense.id);
-        onUpdateProject({ ...project, otherExpenses: updatedExpenses });
+        // Fix: Changed property to snake_case.
+        const updatedExpenses = project.other_expenses.filter(exp => exp.id !== expense.id);
+        // Fix: Changed property to snake_case.
+        onUpdateProject({ ...project, other_expenses: updatedExpenses });
       }
     });
   };
@@ -305,14 +312,17 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                 <div className="flex justify-between items-start">
                     <div>
                         <h3 className="font-bold text-2xl text-gray-800">{project.name}</h3>
-                        <p className="text-md text-gray-600">Client: <span className="font-medium text-gray-700">{project.clientName}</span></p>
+                        {/* Fix: Changed property to snake_case. */}
+                        <p className="text-md text-gray-600">Client: <span className="font-medium text-gray-700">{project.client_name}</span></p>
                         <p className="text-sm text-gray-500">{project.location}</p>
-                        {project.boreholeType && (
-                            <p className="text-sm text-blue-600 font-medium mt-1">{project.boreholeType}</p>
+                        {/* Fix: Changed property to snake_case. */}
+                        {project.borehole_type && (
+                            <p className="text-sm text-blue-600 font-medium mt-1">{project.borehole_type}</p>
                         )}
                     </div>
                     <div className="text-right">
-                        <p className="text-sm">Start Date: <span className="font-semibold">{project.startDate}</span></p>
+                        {/* Fix: Changed property to snake_case. */}
+                        <p className="text-sm">Start Date: <span className="font-semibold">{project.start_date}</span></p>
                         <p className="text-sm">Status: <span className="font-semibold">{project.status}</span></p>
                     </div>
                 </div>
@@ -323,7 +333,8 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 uppercase">Amount Received</p>
-                        <p className="font-bold text-green-600 text-lg">GMD {project.amountReceived.toLocaleString()}</p>
+                        {/* Fix: Changed property to snake_case. */}
+                        <p className="font-bold text-green-600 text-lg">GMD {project.amount_received.toLocaleString()}</p>
                     </div>
                     <div>
                         <p className="text-xs text-gray-500 uppercase">Net Profit/Loss</p>
@@ -342,11 +353,13 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Total Project Budget:</span>
-                      <span className="font-bold text-lg text-blue-600">GMD {project.totalBudget.toLocaleString()}</span>
+                      {/* Fix: Changed property to snake_case. */}
+                      <span className="font-bold text-lg text-blue-600">GMD {project.total_budget.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Amount Received:</span>
-                      <span className="font-bold text-lg text-green-600">GMD {project.amountReceived.toLocaleString()}</span>
+                      {/* Fix: Changed property to snake_case. */}
+                      <span className="font-bold text-lg text-green-600">GMD {project.amount_received.toLocaleString()}</span>
                     </div>
                   </div>
                   {/* Right side: Costs */}
@@ -506,7 +519,8 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                               </tr>
                           </thead>
                           <tbody>
-                              {project.otherExpenses.map(exp => (
+                              {/* Fix: Changed property to snake_case. */}
+                              {project.other_expenses.map(exp => (
                                   <tr key={exp.id} className="bg-white border-b hover:bg-gray-50">
                                       <td className="px-4 py-2 font-medium text-gray-900">{exp.description}</td>
                                       <td className="px-4 py-2 text-right">GMD {exp.amount.toLocaleString()}</td>
@@ -516,7 +530,8 @@ const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({ isOpen, onClose
                                       </td>
                                   </tr>
                               ))}
-                               {project.otherExpenses.length === 0 && (
+                               {/* Fix: Changed property to snake_case. */}
+                               {project.other_expenses.length === 0 && (
                                   <tr><td colSpan={3} className="text-center text-gray-500 py-4">No other expenses added yet.</td></tr>
                                )}
                           </tbody>

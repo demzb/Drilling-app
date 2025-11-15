@@ -1,9 +1,13 @@
 import { Invoice } from '../types';
 
-export const getInvoiceTotal = (invoice: Pick<Invoice, 'lineItems' | 'taxRate' | 'discountAmount'>): number => {
-    const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-    const discountedSubtotal = subtotal - (invoice.discountAmount || 0);
-    const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
+// Fix: Changed properties to snake_case to match the Invoice type.
+export const getInvoiceTotal = (invoice: Pick<Invoice, 'line_items' | 'tax_rate' | 'discount_amount'>): number => {
+    // Fix: Changed property to snake_case.
+    const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    // Fix: Changed property to snake_case.
+    const discountedSubtotal = subtotal - (invoice.discount_amount || 0);
+    // Fix: Changed property to snake_case.
+    const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
     return discountedSubtotal + taxAmount;
 };
 

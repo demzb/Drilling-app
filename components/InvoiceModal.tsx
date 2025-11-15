@@ -14,22 +14,22 @@ interface InvoiceModalProps {
 }
 
 const emptyInvoice = {
-      invoiceNumber: '',
-      clientId: undefined,
-      clientName: '',
-      clientAddress: '',
+      invoice_number: '',
+      client_id: undefined,
+      client_name: '',
+      client_address: '',
       date: new Date().toISOString().split('T')[0],
-      dueDate: '',
-      lineItems: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+      due_date: '',
+      line_items: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
       notes: 'Thank you for your business. Please note that 75% of the total amount is payable upon receipt of this invoice, and the remaining 25% is due upon completion of the project. Payment can be made to the specified account.',
-      taxRate: 0,
-      discountAmount: 0,
-      projectId: undefined,
-      projectName: undefined,
+      tax_rate: 0,
+      discount_amount: 0,
+      project_id: undefined,
+      project_name: undefined,
       status: InvoiceStatus.DRAFT,
-      invoiceType: InvoiceType.INVOICE,
+      invoice_type: InvoiceType.INVOICE,
       payments: [],
-      boreholeType: BoreholeType.SOLAR_MEDIUM,
+      borehole_type: BoreholeType.SOLAR_MEDIUM,
 };
 
 const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients, onSaveClient }) => {
@@ -43,25 +43,25 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       const { user_id, created_at, ...editableInvoice } = invoiceToEdit;
       setInvoice({
         ...editableInvoice,
-        discountAmount: editableInvoice.discountAmount || 0,
-        boreholeType: editableInvoice.boreholeType || BoreholeType.SOLAR_MEDIUM,
+        discount_amount: editableInvoice.discount_amount || 0,
+        borehole_type: editableInvoice.borehole_type || BoreholeType.SOLAR_MEDIUM,
       });
     } else {
       setInvoice({
         ...emptyInvoice,
-        invoiceNumber: nextInvoiceNumber,
+        invoice_number: nextInvoiceNumber,
       });
     }
   }, [invoiceToEdit, isOpen, nextInvoiceNumber]);
 
 
   useEffect(() => {
-    const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-    const discount = parseFloat(String(invoice.discountAmount)) || 0;
+    const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    const discount = parseFloat(String(invoice.discount_amount)) || 0;
     const discountedSubtotal = subtotal - discount;
-    const taxAmount = discountedSubtotal * ((parseFloat(String(invoice.taxRate)) || 0) / 100);
+    const taxAmount = discountedSubtotal * ((parseFloat(String(invoice.tax_rate)) || 0) / 100);
     setTotal(discountedSubtotal + taxAmount);
-  }, [invoice.lineItems, invoice.taxRate, invoice.discountAmount]);
+  }, [invoice.line_items, invoice.tax_rate, invoice.discount_amount]);
 
 
   if (!isOpen) return null;
@@ -74,16 +74,16 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedProjectId = e.target.value;
       const selectedProject = projects.find(p => p.id === selectedProjectId);
-      const projectClient = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
+      const projectClient = selectedProject ? clients.find(c => c.id === selectedProject.client_id) : null;
 
       setInvoice({
           ...invoice,
-          projectId: selectedProjectId || undefined,
-          projectName: selectedProject ? selectedProject.name : undefined,
-          clientId: projectClient ? projectClient.id : invoice.clientId,
-          clientName: projectClient ? projectClient.name : (selectedProject ? selectedProject.clientName : invoice.clientName),
-          clientAddress: projectClient ? projectClient.address : invoice.clientAddress,
-          boreholeType: selectedProject ? (selectedProject.boreholeType || BoreholeType.SOLAR_MEDIUM) : invoice.boreholeType,
+          project_id: selectedProjectId || undefined,
+          project_name: selectedProject ? selectedProject.name : undefined,
+          client_id: projectClient ? projectClient.id : invoice.client_id,
+          client_name: projectClient ? projectClient.name : (selectedProject ? selectedProject.client_name : invoice.client_name),
+          client_address: projectClient ? projectClient.address : invoice.client_address,
+          borehole_type: selectedProject ? (selectedProject.borehole_type || BoreholeType.SOLAR_MEDIUM) : invoice.borehole_type,
       });
   };
 
@@ -91,62 +91,63 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
       const selectedClientId = e.target.value;
       if (selectedClientId === '--new--') {
           setIsClientModalOpen(true);
-          e.target.value = invoice.clientId || '';
+          e.target.value = invoice.client_id || '';
           return;
       }
       const selectedClient = clients.find(c => c.id === selectedClientId);
       setInvoice({
           ...invoice,
-          clientId: selectedClientId || undefined,
-          clientName: selectedClient ? selectedClient.name : '',
-          clientAddress: selectedClient ? selectedClient.address : '',
+          client_id: selectedClientId || undefined,
+          client_name: selectedClient ? selectedClient.name : '',
+          client_address: selectedClient ? selectedClient.address : '',
       });
   };
   
-  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }): Promise<Client | null> => {
     const newClient = await onSaveClient(clientData);
     if (newClient) {
         setInvoice(prev => ({
             ...prev,
-            clientId: newClient.id,
-            clientName: newClient.name,
-            clientAddress: newClient.address,
+            client_id: newClient.id,
+            client_name: newClient.name,
+            client_address: newClient.address,
         }));
     }
-    setIsClientModalOpen(false);
+    // Return the new client so the self-contained ClientModal can close itself.
+    return newClient;
   };
 
   const handleLineItemChange = (index: number, field: keyof LineItem, value: string | number) => {
-    const newLineItems = [...invoice.lineItems];
+    const newLineItems = [...invoice.line_items];
     const item = newLineItems[index];
     if (typeof item[field] === 'number') {
         (item as any)[field] = value === '' ? '' : parseFloat(value as string) || 0;
     } else {
         (item as any)[field] = value;
     }
-    setInvoice({ ...invoice, lineItems: newLineItems });
+    setInvoice({ ...invoice, line_items: newLineItems });
   };
 
   const addLineItem = () => {
     setInvoice({
       ...invoice,
-      lineItems: [...invoice.lineItems, { id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+      line_items: [...invoice.line_items, { id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
     });
   };
 
   const removeLineItem = (index: number) => {
-    const newLineItems = invoice.lineItems.filter((_, i) => i !== index);
-    setInvoice({ ...invoice, lineItems: newLineItems });
+    const newLineItems = invoice.line_items.filter((_, i) => i !== index);
+    setInvoice({ ...invoice, line_items: newLineItems });
   };
 
   const handleSave = async () => {
-    if (!invoice.clientId) {
+    if (!invoice.client_id) {
         alert("Please select a client for the invoice.");
         return;
     }
     await onSave({
         ...invoice,
-        discountAmount: parseFloat(String(invoice.discountAmount)) || 0,
+        discount_amount: parseFloat(String(invoice.discount_amount)) || 0,
     });
   };
   
@@ -170,14 +171,14 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Link to Project</label>
-              <select name="projectId" value={invoice.projectId || ''} onChange={handleProjectChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+              <select name="project_id" value={invoice.project_id || ''} onChange={handleProjectChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                   <option value="">Select a project (optional)</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Borehole Type</label>
-                <select name="boreholeType" value={invoice.boreholeType} onChange={handleChange} disabled={!!invoice.projectId} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100">
+                <select name="borehole_type" value={invoice.borehole_type} onChange={handleChange} disabled={!!invoice.project_id} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100">
                     {Object.values(BoreholeType).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
@@ -186,23 +187,23 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
                 <label className="block text-sm font-medium text-gray-700">Client</label>
-                <select name="clientId" value={invoice.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!!invoice.projectId}>
+                <select name="client_id" value={invoice.client_id || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!!invoice.project_id}>
                     <option value="">Select a client...</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     <option value="--new--" className="font-bold text-blue-600">-- Add New Client --</option>
                 </select>
-                {invoice.projectId && <p className="text-xs text-gray-500 mt-1">Client is linked from the selected project.</p>}
+                {invoice.project_id && <p className="text-xs text-gray-500 mt-1">Client is linked from the selected project.</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Client Address</label>
-              <textarea name="clientAddress" value={invoice.clientAddress} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Client address will populate here"></textarea>
+              <textarea name="client_address" value={invoice.client_address} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Client address will populate here"></textarea>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Invoice Number</label>
-              <input type="text" name="invoiceNumber" value={invoice.invoiceNumber} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm" readOnly />
+              <input type="text" name="invoice_number" value={invoice.invoice_number} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm" readOnly />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
@@ -210,14 +211,14 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Due Date</label>
-              <input type="date" name="dueDate" value={invoice.dueDate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"/>
+              <input type="date" name="due_date" value={invoice.due_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"/>
             </div>
           </div>
 
           <div className="pt-4">
             <h3 className="text-lg font-medium text-gray-800">Items</h3>
             <div className="space-y-2 mt-2">
-              {invoice.lineItems.map((item, index) => (
+              {invoice.line_items.map((item, index) => (
                 <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
                   <input type="text" placeholder="Description" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} className="col-span-6 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
                   <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} className="col-span-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
@@ -246,11 +247,11 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                    </div>
                    <div className="flex items-center">
                         <label className="text-sm font-medium text-gray-700 w-32">Discount (GMD)</label>
-                        <input type="number" name="discountAmount" value={invoice.discountAmount || ''} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0.00" step="0.01"/>
+                        <input type="number" name="discount_amount" value={invoice.discount_amount || ''} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0.00" step="0.01"/>
                     </div>
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Tax Rate (%)</label>
-                      <input type="number" name="taxRate" value={invoice.taxRate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
+                      <input type="number" name="tax_rate" value={invoice.tax_rate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
                    </div>
                    <div className="flex justify-between items-center pt-2 border-t mt-2">
                        <span className="text-lg font-semibold text-gray-800">Total</span>

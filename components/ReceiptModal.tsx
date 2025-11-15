@@ -39,8 +39,10 @@ const ReceiptContent: React.FC<{ invoice: Invoice; payment: Payment }> = ({ invo
             <div className="grid grid-cols-2 gap-8 border-t pt-6">
                 <div>
                     <h3 className="text-sm font-semibold text-gray-500 uppercase">Received From</h3>
-                    <p className="font-medium text-gray-800">{invoice.clientName}</p>
-                    <p className="text-gray-600 whitespace-pre-line">{invoice.clientAddress}</p>
+                    {/* Fix: Changed property to snake_case. */}
+                    <p className="font-medium text-gray-800">{invoice.client_name}</p>
+                    {/* Fix: Changed property to snake_case. */}
+                    <p className="text-gray-600 whitespace-pre-line">{invoice.client_address}</p>
                 </div>
                 <div className="text-right">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -80,9 +82,11 @@ const ReceiptContent: React.FC<{ invoice: Invoice; payment: Payment }> = ({ invo
                     <tbody>
                         <tr className="border-b">
                             <td className="p-3">
-                                <p>Payment for Invoice #{invoice.invoiceNumber}</p>
-                                {invoice.projectName && (
-                                    <p className="text-xs text-gray-500">Project: {invoice.projectName}</p>
+                                {/* Fix: Changed property to snake_case. */}
+                                <p>Payment for Invoice #{invoice.invoice_number}</p>
+                                {/* Fix: Changed property to snake_case. */}
+                                {invoice.project_name && (
+                                    <p className="text-xs text-gray-500">Project: {invoice.project_name}</p>
                                 )}
                             </td>
                             <td className="p-3 text-right">GMD {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
@@ -140,7 +144,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, invoice, p
     const fileDownload = document.createElement("a");
     document.body.appendChild(fileDownload);
     fileDownload.href = source;
-    fileDownload.download = `Receipt_${invoice.invoiceNumber}_${payment.id}.doc`;
+    fileDownload.download = `Receipt_${invoice.invoice_number}_${payment.id}.doc`;
     fileDownload.click();
     document.body.removeChild(fileDownload);
   };

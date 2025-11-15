@@ -4,10 +4,13 @@ import { getInvoiceTotal, getInvoiceTotalPaid } from './invoiceUtils';
 
 
 export const generateInvoiceWordHtml = (invoice: Invoice): string => {
-  const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  const discount = invoice.discountAmount || 0;
+  // Fix: Changed property to snake_case.
+  const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  // Fix: Changed property to snake_case.
+  const discount = invoice.discount_amount || 0;
   const discountedSubtotal = subtotal - discount;
-  const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
+  // Fix: Changed property to snake_case.
+  const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
   const totalAmount = getInvoiceTotal(invoice);
   const totalPaid = getInvoiceTotalPaid(invoice);
   const totalBalanceDue = totalAmount - totalPaid;
@@ -34,7 +37,8 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
     footer: `margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 10px; color: #777;`
   };
 
-  const lineItemsHtml = invoice.lineItems.map(item => `
+  // Fix: Changed property to snake_case.
+  const lineItemsHtml = invoice.line_items.map(item => `
     <tr>
       <td style="${styles.td}">${item.description}</td>
       <td style="${styles.td} text-align: center;">${item.quantity}</td>
@@ -50,9 +54,12 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
           <tr>
             <td style="${styles.headerCellLeft}">
               <h1 style="font-size: 28px; margin: 0; color: #000;">Invoice</h1>
-              <p style="margin: 0; color: #555;">${invoice.invoiceNumber}</p>
-              ${invoice.projectName ? `<p style="margin-top: 5px; font-weight: bold; color: #2563EB;">Project: ${invoice.projectName}</p>` : ''}
-              ${invoice.boreholeType ? `<p style="margin-top: 5px; color: #555;">${invoice.boreholeType}</p>` : ''}
+              {/* Fix: Changed property to snake_case. */}
+              <p style="margin: 0; color: #555;">${invoice.invoice_number}</p>
+              {/* Fix: Changed property to snake_case. */}
+              ${invoice.project_name ? `<p style="margin-top: 5px; font-weight: bold; color: #2563EB;">Project: ${invoice.project_name}</p>` : ''}
+              {/* Fix: Changed property to snake_case. */}
+              ${invoice.borehole_type ? `<p style="margin-top: 5px; color: #555;">${invoice.borehole_type}</p>` : ''}
             </td>
             <td style="${styles.headerCellRight}">
               <h2 style="font-size: 18px; margin: 0; color: #2563EB; text-transform: uppercase;">YS BOREHOLE DRILLING COMPANY</h2>
@@ -68,12 +75,15 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
           <tr>
             <td style="width: 50%; vertical-align: top;">
               <h3 style="font-size: 11px; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Bill To</h3>
-              <p style="font-weight: bold; margin: 0;">${invoice.clientName}</p>
-              <p style="margin: 0; white-space: pre-line;">${invoice.clientAddress}</p>
+              {/* Fix: Changed property to snake_case. */}
+              <p style="font-weight: bold; margin: 0;">${invoice.client_name}</p>
+              {/* Fix: Changed property to snake_case. */}
+              <p style="margin: 0; white-space: pre-line;">${invoice.client_address}</p>
             </td>
             <td style="width: 50%; text-align: right; vertical-align: top;">
               <p style="margin: 0;"><span style="font-weight: bold;">Invoice Date:</span> ${invoice.date}</p>
-              <p style="margin: 0;"><span style="font-weight: bold;">Due Date:</span> ${invoice.dueDate}</p>
+              {/* Fix: Changed property to snake_case. */}
+              <p style="margin: 0;"><span style="font-weight: bold;">Due Date:</span> ${invoice.due_date}</p>
             </td>
           </tr>
         </table>
@@ -113,7 +123,8 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
               </div>
             ` : ''}
             <div style="${styles.totalRow}">
-              <span style="${styles.totalLabel}">Tax (${invoice.taxRate}%):</span>
+              {/* Fix: Changed property to snake_case. */}
+              <span style="${styles.totalLabel}">Tax (${invoice.tax_rate}%):</span>
               <span style="${styles.totalValue}">GMD ${taxAmount.toFixed(2)}</span>
             </div>
             <div style="${styles.totalRow}; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
@@ -167,8 +178,10 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
           <tr>
             <td style="width: 50%; vertical-align: top;">
               <h3 style="font-size: 11px; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Received From</h3>
-              <p style="font-weight: bold; margin: 0;">${invoice.clientName}</p>
-              <p style="margin: 0; white-space: pre-line;">${invoice.clientAddress}</p>
+              {/* Fix: Changed property to snake_case. */}
+              <p style="font-weight: bold; margin: 0;">${invoice.client_name}</p>
+              {/* Fix: Changed property to snake_case. */}
+              <p style="margin: 0; white-space: pre-line;">${invoice.client_address}</p>
             </td>
             <td style="width: 50%; text-align: right; vertical-align: top;">
               <p style="margin: 0;"><span style="font-weight: bold;">Payment Date:</span> ${payment.date}</p>
@@ -197,8 +210,10 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
           <tbody>
               <tr>
                   <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                      Invoice: ${invoice.invoiceNumber}<br/>
-                      ${invoice.projectName ? `<span style="font-size: 11px; color: #555;">Project: ${invoice.projectName}</span>` : ''}
+                      {/* Fix: Changed property to snake_case. */}
+                      Invoice: ${invoice.invoice_number}<br/>
+                      {/* Fix: Changed property to snake_case. */}
+                      ${invoice.project_name ? `<span style="font-size: 11px; color: #555;">Project: ${invoice.project_name}</span>` : ''}
                   </td>
                   <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">GMD ${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                   <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">GMD ${balanceDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -227,9 +242,10 @@ export const exportProjectsToCSV = (projects: Project[]) => {
         'Status', 'Borehole Type', 'Total Budget', 'Amount Received'
     ];
 
+    // Fix: Changed properties to snake_case.
     const rows = projects.map(p => [
-        p.id, p.name, p.clientName, p.location, p.startDate, p.endDate || 'N/A',
-        p.status, p.boreholeType || 'N/A', p.totalBudget, p.amountReceived
+        p.id, p.name, p.client_name, p.location, p.start_date, p.end_date || 'N/A',
+        p.status, p.borehole_type || 'N/A', p.total_budget, p.amount_received
     ].map(escapeCsvCell).join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
@@ -249,10 +265,13 @@ export const printProjectsList = (projects: Project[]) => {
     const tableRows = projects.map(p => `
         <tr>
             <td style="padding: 8px; border: 1px solid #ddd;">${p.name}</td>
-            <td style="padding: 8px; border: 1px solid #ddd;">${p.clientName}</td>
+            {/* Fix: Changed property to snake_case. */}
+            <td style="padding: 8px; border: 1px solid #ddd;">${p.client_name}</td>
             <td style="padding: 8px; border: 1px solid #ddd;">${p.status}</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.totalBudget.toLocaleString()}</td>
-            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.amountReceived.toLocaleString()}</td>
+            {/* Fix: Changed property to snake_case. */}
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.total_budget.toLocaleString()}</td>
+            {/* Fix: Changed property to snake_case. */}
+            <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">GMD ${p.amount_received.toLocaleString()}</td>
         </tr>
     `).join('');
 
@@ -310,14 +329,15 @@ export const exportProjectDetailToCSV = (project: Project) => {
     };
 
     // Section 1: Project Summary
+    // Fix: Changed properties to snake_case.
     const summaryData = [
         ['Project Name', project.name],
-        ['Client Name', project.clientName],
+        ['Client Name', project.client_name],
         ['Location', project.location],
-        ['Start Date', project.startDate],
-        ['End Date', project.endDate || 'N/A'],
+        ['Start Date', project.start_date],
+        ['End Date', project.end_date || 'N/A'],
         ['Status', project.status],
-        ['Borehole Type', project.boreholeType || 'N/A'],
+        ['Borehole Type', project.borehole_type || 'N/A'],
     ];
     csvContent += 'Project Summary\n';
     summaryData.forEach(row => {
@@ -327,6 +347,8 @@ export const exportProjectDetailToCSV = (project: Project) => {
     // Section 2: Financials
     const totalMaterialCost = project.materials.reduce((acc, mat) => acc + (mat.quantity * mat.unitCost), 0);
     const totalStaffCost = project.staff.reduce((acc, s) => acc + s.paymentAmount, 0);
-    const totalOtherCost = project.otherExpenses.reduce((acc, exp) => acc + exp.amount, 0);
+    // Fix: Changed property to snake_case.
+    const totalOtherCost = project.other_expenses.reduce((acc, exp) => acc + exp.amount, 0);
     const totalProjectCost = totalMaterialCost + totalStaffCost + totalOtherCost;
-    const netProfit = project.amountReceived - totalProjectCost;
+    // Fix: Changed property to snake_case.
+    const netProfit = project.amount_received - totalProjectCost;

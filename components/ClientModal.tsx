@@ -4,13 +4,14 @@ import { Client } from '../types';
 interface ClientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (client: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
+  onSave: (client: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
   clientToEdit: Client | null;
 }
 
+// Fix: Changed property to snake_case.
 const emptyClient: Omit<Client, 'id' | 'user_id' | 'created_at'> = {
     name: '',
-    contactPerson: '',
+    contact_person: '',
     email: '',
     phone: '',
     address: '',
@@ -47,7 +48,12 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, clie
             clientData.id = clientToEdit.id;
         }
         
-        await onSave(clientData);
+        const savedClient = await onSave(clientData);
+        // The modal is now self-contained: it closes itself on successful save.
+        if (savedClient) {
+            onClose();
+        }
+        // If saving fails, the modal remains open for the user to see the error and try again.
     };
 
     return (
@@ -71,7 +77,8 @@ const ClientModal: React.FC<ClientModalProps> = ({ isOpen, onClose, onSave, clie
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Contact Person (Optional)</label>
-                                <input type="text" name="contactPerson" value={formData.contactPerson} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                                {/* Fix: Changed property to snake_case. */}
+                                <input type="text" name="contact_person" value={formData.contact_person || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

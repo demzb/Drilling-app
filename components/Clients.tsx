@@ -24,13 +24,6 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
     setClientToEdit(client);
     setIsModalOpen(true);
   };
-
-  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
-    const savedClient = await onSaveClient(clientData);
-    if (savedClient) {
-      setIsModalOpen(false);
-    }
-  };
   
   const handleDeleteRequest = (client: Client) => {
     setClientToDelete(client);
@@ -50,7 +43,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
       <ClientModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveClient}
+        onSave={onSaveClient}
         clientToEdit={clientToEdit}
       />
       <ConfirmationModal
@@ -88,7 +81,7 @@ const Clients: React.FC<ClientsProps> = ({ clients, onSaveClient, onDeleteClient
                   <td className="px-6 py-4 font-medium text-gray-900">
                     {client.name}
                   </td>
-                  <td className="px-6 py-4">{client.contactPerson || 'N/A'}</td>
+                  <td className="px-6 py-4">{client.contact_person || 'N/A'}</td>
                   <td className="px-6 py-4">
                     <div>{client.email}</div>
                     <div className="text-gray-400">{client.phone}</div>

@@ -11,18 +11,18 @@ interface ProjectModalProps {
   onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-type ProjectFormData = Omit<Project, 'id' | 'user_id' | 'created_at' | 'amountReceived' | 'materials' | 'staff' | 'otherExpenses'>;
+type ProjectFormData = Omit<Project, 'id' | 'user_id' | 'created_at' | 'amount_received' | 'materials' | 'staff' | 'other_expenses'>;
 
 const emptyProject: ProjectFormData = {
     name: '',
-    clientId: undefined,
-    clientName: '',
+    client_id: undefined,
+    client_name: '',
     location: '',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
     status: ProjectStatus.PLANNED,
-    totalBudget: 0,
-    boreholeType: BoreholeType.SOLAR_MEDIUM,
+    total_budget: 0,
+    borehole_type: BoreholeType.SOLAR_MEDIUM,
 };
 
 const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, project, clients, onSaveClient }) => {
@@ -32,13 +32,13 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
   useEffect(() => {
     if (project) {
       const { 
-        id, user_id, created_at, amountReceived, materials, staff, otherExpenses, 
+        id, user_id, created_at, amount_received, materials, staff, other_expenses, 
         ...editableData 
       } = project;
       setFormData({
         ...editableData,
-        endDate: editableData.endDate || '',
-        boreholeType: editableData.boreholeType || BoreholeType.SOLAR_MEDIUM,
+        end_date: editableData.end_date || '',
+        borehole_type: editableData.borehole_type || BoreholeType.SOLAR_MEDIUM,
       });
     } else {
       setFormData(emptyProject);
@@ -56,43 +56,44 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
     const selectedClientId = e.target.value;
     if (selectedClientId === '--new--') {
         setIsClientModalOpen(true);
-        e.target.value = formData.clientId || '';
+        e.target.value = formData.client_id || '';
         return;
     }
     const selectedClient = clients.find(c => c.id === selectedClientId);
     setFormData(prev => ({
         ...prev,
-        clientId: selectedClientId || undefined,
-        clientName: selectedClient ? selectedClient.name : '',
+        client_id: selectedClientId || undefined,
+        client_name: selectedClient ? selectedClient.name : '',
     }));
   };
 
-  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
+  const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }): Promise<Client | null> => {
     const newClient = await onSaveClient(clientData);
     if (newClient) {
         setFormData(prev => ({
             ...prev,
-            clientId: newClient.id,
-            clientName: newClient.name,
+            client_id: newClient.id,
+            client_name: newClient.name,
         }));
     }
-    setIsClientModalOpen(false);
+    // Return the new client so the self-contained ClientModal can close itself.
+    return newClient;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.clientId) {
+    if (!formData.name || !formData.client_id) {
       alert('Please fill in Project Name and select a Client.');
       return;
     }
     
     const projectToSave = {
         ...formData,
-        totalBudget: parseFloat(String(formData.totalBudget)) || 0,
-        amountReceived: project ? project.amountReceived : 0,
+        total_budget: parseFloat(String(formData.total_budget)) || 0,
+        amount_received: project ? project.amount_received : 0,
         materials: project ? project.materials : [],
         staff: project ? project.staff : [],
-        otherExpenses: project ? project.otherExpenses : [],
+        other_expenses: project ? project.other_expenses : [],
         ...(project && { id: project.id })
     };
 
@@ -124,7 +125,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Client</label>
-                    <select name="clientId" value={formData.clientId || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    <select name="client_id" value={formData.client_id || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                       <option value="">Select a client...</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       <option value="--new--" className="font-bold text-blue-600">-- Add New Client --</option>
@@ -138,21 +139,21 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                    <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                    <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">End Date (Optional)</label>
-                    <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                    <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Total Budget (GMD)</label>
-                    <input type="number" name="totalBudget" value={formData.totalBudget} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00" />
+                    <input type="number" name="total_budget" value={formData.total_budget} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Borehole Type</label>
-                    <select name="boreholeType" value={formData.boreholeType} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <select name="borehole_type" value={formData.borehole_type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         {Object.values(BoreholeType).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>

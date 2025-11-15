@@ -39,7 +39,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ isOpen, onClo
     const fileDownload = document.createElement("a");
     document.body.appendChild(fileDownload);
     fileDownload.href = source;
-    fileDownload.download = `Receipt_${invoice.invoiceNumber}_${payment.id}.doc`;
+    fileDownload.download = `Receipt_${invoice.invoice_number}_${payment.id}.doc`;
     fileDownload.click();
     document.body.removeChild(fileDownload);
   };
@@ -57,7 +57,7 @@ const PaymentHistoryModal: React.FC<PaymentHistoryModalProps> = ({ isOpen, onClo
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
         <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
           <div className="flex justify-between items-center p-4 border-b">
-            <h2 className="text-xl font-semibold text-gray-800">Payment History for Invoice #{invoice.invoiceNumber}</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Payment History for Invoice #{invoice.invoice_number}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

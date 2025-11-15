@@ -6,14 +6,16 @@ export const generateReminderEmail = (invoice: Invoice): { subject: string; body
   const totalPaid = getInvoiceTotalPaid(invoice);
   const balanceDue = totalAmount - totalPaid;
 
-  const subject = `Reminder: Payment for Invoice #${invoice.invoiceNumber}`;
+  // Fix: Changed property to snake_case.
+  const subject = `Reminder: Payment for Invoice #${invoice.invoice_number}`;
 
-  const body = `Dear ${invoice.clientName},
+  // Fix: Changed properties to snake_case.
+  const body = `Dear ${invoice.client_name},
 
-This is a friendly reminder that invoice #${invoice.invoiceNumber} is due on ${invoice.dueDate}.
+This is a friendly reminder that invoice #${invoice.invoice_number} is due on ${invoice.due_date}.
 
 Invoice Details:
-- Invoice Number: ${invoice.invoiceNumber}
+- Invoice Number: ${invoice.invoice_number}
 - Total Amount: GMD ${totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
 - Amount Paid: GMD ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
 - Balance Due: GMD ${balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}

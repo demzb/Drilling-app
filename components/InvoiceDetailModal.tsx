@@ -13,10 +13,10 @@ interface InvoiceDetailModalProps {
 const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose, invoice }) => {
   if (!isOpen) return null;
 
-  const subtotal = invoice.lineItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  const discount = invoice.discountAmount || 0;
+  const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  const discount = invoice.discount_amount || 0;
   const discountedSubtotal = subtotal - discount;
-  const taxAmount = discountedSubtotal * (invoice.taxRate / 100);
+  const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
   
   const totalAmount = getInvoiceTotal(invoice);
   const totalPaid = getInvoiceTotalPaid(invoice);
@@ -69,7 +69,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
       const fileDownload = document.createElement("a");
       document.body.appendChild(fileDownload);
       fileDownload.href = source;
-      fileDownload.download = `${invoice.invoiceType.replace(' ', '_')}_${invoice.invoiceNumber}.doc`;
+      fileDownload.download = `${invoice.invoice_type.replace(' ', '_')}_${invoice.invoice_number}.doc`;
       fileDownload.click();
       document.body.removeChild(fileDownload);
   };
@@ -82,8 +82,8 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
           <div className="flex justify-between items-start border-b pb-6">
             <div className="w-1/3">
               <h3 className="text-sm font-semibold text-gray-500 uppercase">Bill To</h3>
-              <p className="font-medium text-gray-800">{invoice.clientName}</p>
-              <p className="text-gray-600 whitespace-pre-line">{invoice.clientAddress}</p>
+              <p className="font-medium text-gray-800">{invoice.client_name}</p>
+              <p className="text-gray-600 whitespace-pre-line">{invoice.client_address}</p>
             </div>
 
             <div className="w-1/3 text-center">
@@ -96,22 +96,22 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
 
             <div className="w-1/3 text-right">
                 <h1 className="text-3xl font-bold text-gray-800 uppercase">Invoice</h1>
-                <p className="text-gray-500 mt-1">{invoice.invoiceNumber}</p>
+                <p className="text-gray-500 mt-1">{invoice.invoice_number}</p>
                 
                 <div className="mt-4 text-sm">
                   <div className="grid grid-cols-2 gap-x-1">
                       <span className="font-semibold text-gray-500">Invoice Date:</span>
                       <span className="text-gray-800">{invoice.date}</span>
                       <span className="font-semibold text-gray-500">Due Date:</span>
-                      <span className="text-gray-800">{invoice.dueDate}</span>
+                      <span className="text-gray-800">{invoice.due_date}</span>
                   </div>
                 </div>
             </div>
           </div>
           
-          {invoice.projectName && (
+          {invoice.project_name && (
             <div className="-mt-4">
-                 <p className="text-sm text-center text-blue-600 font-medium mt-1">Project: {invoice.projectName} - {invoice.boreholeType}</p>
+                 <p className="text-sm text-center text-blue-600 font-medium mt-1">Project: {invoice.project_name} - {invoice.borehole_type}</p>
             </div>
            )}
 
@@ -127,7 +127,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
                 </tr>
               </thead>
               <tbody>
-                {invoice.lineItems.map(item => (
+                {invoice.line_items.map(item => (
                   <tr key={item.id} className="border-b">
                     <td className="p-3">{item.description}</td>
                     <td className="p-3 text-center">{item.quantity}</td>
@@ -161,7 +161,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
                     </div>
                 )}
                 <div className="flex justify-between">
-                    <span className="text-gray-500">Tax ({invoice.taxRate}%):</span>
+                    <span className="text-gray-500">Tax ({invoice.tax_rate}%):</span>
                     <span className="font-medium text-gray-800">GMD {taxAmount.toFixed(2)}</span>
                 </div>
                  <div className="flex justify-between border-t pt-2 mt-2">

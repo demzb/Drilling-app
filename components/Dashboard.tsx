@@ -121,13 +121,13 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
 
   const overdueInvoices = invoices
     .filter(inv => 
-        (inv.status === InvoiceStatus.OVERDUE || (new Date(inv.dueDate) < today)) && 
+        (inv.status === InvoiceStatus.OVERDUE || (new Date(inv.due_date) < today)) && 
         inv.status !== InvoiceStatus.PAID && 
         inv.status !== InvoiceStatus.DRAFT
     )
     .map(inv => {
         const balance = getInvoiceTotal(inv) - getInvoiceTotalPaid(inv);
-        const dueDate = new Date(inv.dueDate);
+        const dueDate = new Date(inv.due_date);
         const daysOverdue = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 3600 * 24));
         return { ...inv, balance, daysOverdue };
     })
@@ -240,8 +240,8 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
             {overdueInvoices.length > 0 ? overdueInvoices.map(inv => (
               <div key={inv.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
                 <div>
-                  <p className="font-medium text-gray-800">{inv.clientName}</p>
-                  <p className="text-xs text-gray-500">{inv.invoiceNumber}</p>
+                  <p className="font-medium text-gray-800">{inv.client_name}</p>
+                  <p className="text-xs text-gray-500">{inv.invoice_number}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-red-600">GMD {inv.balance.toLocaleString()}</p>
