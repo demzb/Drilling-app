@@ -10,7 +10,8 @@ import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
 import Login from './components/Login';
-import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client } from './types';
+import Chat from './components/Chat';
+import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client, ProjectStatus, Message } from './types';
 import { getInvoiceTotal } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   // --- Auth & Data Loading ---
   useEffect(() => {
@@ -44,6 +46,7 @@ const App: React.FC = () => {
         setEmployees([]);
         setTransactions([]);
         setClients([]);
+        setMessages([]);
       }
     });
 
@@ -61,13 +64,15 @@ const App: React.FC = () => {
             employeesRes,
             invoicesRes,
             projectsRes,
-            transactionsRes
+            transactionsRes,
+            messagesRes
         ] = await Promise.all([
             supabase.from('clients').select('*').order('created_at', { ascending: false }),
             supabase.from('employees').select('*').order('created_at', { ascending: false }),
             supabase.from('invoices').select('*').order('created_at', { ascending: false }),
             supabase.from('projects').select('*').order('created_at', { ascending: false }),
             supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+            supabase.from('messages').select('*').order('created_at', { ascending: true }),
         ]);
 
         if (clientsRes.data) setClients(clientsRes.data);
@@ -75,11 +80,12 @@ const App: React.FC = () => {
         if (invoicesRes.data) setInvoices(invoicesRes.data);
         if (projectsRes.data) setProjects(projectsRes.data);
         if (transactionsRes.data) setTransactions(transactionsRes.data);
+        if (messagesRes.data) setMessages(messagesRes.data);
     };
 
     fetchAllData();
 
-    // --- Real-time Subscriptions ---
+    // --- Real-time Subscriptions (for all users) ---
     const clientChannel = supabase.channel('public:clients').on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, payload => {
         if (payload.eventType === 'INSERT') setClients(current => [payload.new as Client, ...current]);
         if (payload.eventType === 'UPDATE') setClients(current => current.map(c => c.id === payload.new.id ? payload.new as Client : c));
@@ -110,12 +116,17 @@ const App: React.FC = () => {
         if (payload.eventType === 'DELETE') setTransactions(current => current.filter(t => t.id !== payload.old.id));
     }).subscribe();
 
+    const messageChannel = supabase.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+      setMessages(current => [...current, payload.new as Message]);
+    }).subscribe();
+
     return () => {
         supabase.removeChannel(clientChannel);
         supabase.removeChannel(employeeChannel);
         supabase.removeChannel(invoiceChannel);
         supabase.removeChannel(projectChannel);
         supabase.removeChannel(transactionChannel);
+        supabase.removeChannel(messageChannel);
     };
   }, [session]);
 
@@ -123,8 +134,35 @@ const App: React.FC = () => {
     await supabase.auth.signOut();
   };
 
+  const updateProjectBudget = useCallback(async (projectId: string) => {
+    const { data: projectInvoices, error: invoicesError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('project_id', projectId);
+
+    if (invoicesError) {
+        console.error("Error fetching project invoices for budget update:", invoicesError.message);
+        return;
+    }
+
+    if (!projectInvoices) return;
+
+    const newTotalBudget = projectInvoices.reduce((sum, inv) => sum + getInvoiceTotal(inv as Invoice), 0);
+
+    const { error: projectUpdateError } = await supabase
+        .from('projects')
+        .update({ total_budget: newTotalBudget })
+        .eq('id', projectId);
+
+    if (projectUpdateError) {
+        console.error("Error updating project budget:", projectUpdateError.message);
+        alert(`Error updating project budget: ${projectUpdateError.message}`);
+    }
+  }, []);
+
   // --- CRUD Handlers (rewritten for Supabase) ---
   const handleReceivePayment = useCallback(async (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => {
+    if (!session) return;
     const invoiceToUpdate = invoices.find(inv => inv.id === invoiceId);
     if (!invoiceToUpdate) return;
 
@@ -147,6 +185,42 @@ const App: React.FC = () => {
         return;
     }
 
+    // Update project amount_received and status
+    if (invoiceToUpdate.project_id) {
+      const { data: projectToUpdate, error: projectFetchError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', invoiceToUpdate.project_id)
+          .single();
+      
+      if (projectFetchError || !projectToUpdate) {
+          console.error("Error fetching project for payment update:", projectFetchError?.message);
+      } else {
+        const newAmountReceived = projectToUpdate.amount_received + paymentDetails.amount;
+        let newProjectStatus = projectToUpdate.status;
+        
+        // Don't downgrade status if it's already Completed
+        if (projectToUpdate.total_budget > 0 && projectToUpdate.status !== ProjectStatus.COMPLETED) {
+            const percentagePaid = (newAmountReceived / projectToUpdate.total_budget) * 100;
+            if (percentagePaid >= 100) {
+                newProjectStatus = ProjectStatus.COMPLETED;
+            } else if (percentagePaid >= 75) {
+                newProjectStatus = ProjectStatus.IN_PROGRESS;
+            }
+        }
+    
+        const { error: projectUpdateError } = await supabase
+            .from('projects')
+            .update({ amount_received: newAmountReceived, status: newProjectStatus })
+            .eq('id', projectToUpdate.id);
+    
+        if (projectUpdateError) {
+            console.error("Error updating project after payment:", projectUpdateError.message);
+            alert(`Error updating project: ${projectUpdateError.message}`);
+        }
+      }
+    }
+
     const newTransaction: Omit<Transaction, 'id' | 'created_at'> = {
         date: paymentDetails.date,
         description: `Payment for Invoice #${invoiceToUpdate.invoice_number}`,
@@ -154,7 +228,7 @@ const App: React.FC = () => {
         type: TransactionType.INCOME,
         amount: paymentDetails.amount,
         is_read_only: true,
-        user_id: session!.user.id,
+        user_id: session.user.id,
     };
     const { error: transactionError } = await supabase.from('transactions').insert(newTransaction);
     if(transactionError) console.error("Error creating transaction:", transactionError.message);
@@ -163,26 +237,51 @@ const App: React.FC = () => {
 
   const handleSaveInvoice = useCallback(async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
     if (!session) return;
+    
+    let originalProjectId: string | undefined | null;
+    if (invoiceData.id) {
+        const originalInvoice = invoices.find(inv => inv.id === invoiceData.id);
+        originalProjectId = originalInvoice?.project_id;
+    }
+
     const { id, ...dataToSave } = invoiceData;
     const finalData = { ...dataToSave, user_id: session.user.id };
 
-    const { error } = id
-      ? await supabase.from('invoices').update(finalData).eq('id', id)
-      : await supabase.from('invoices').insert({ ...finalData, payments: [] });
+    const { data: savedInvoice, error } = id
+      ? await supabase.from('invoices').update(finalData).eq('id', id).select().single()
+      : await supabase.from('invoices').insert({ ...finalData, payments: [] }).select().single();
     
     if (error) {
         console.error("Error saving invoice:", error.message);
         alert(`Error saving invoice: ${error.message}`);
+        return;
     }
-  }, [session]);
+
+    const newProjectId = savedInvoice?.project_id;
+
+    if (originalProjectId && originalProjectId !== newProjectId) {
+        await updateProjectBudget(originalProjectId);
+    }
+    if (newProjectId) {
+        await updateProjectBudget(newProjectId);
+    }
+  }, [session, invoices, updateProjectBudget]);
 
   const handleDeleteInvoice = useCallback(async (invoiceId: string) => {
+    const invoiceToDelete = invoices.find(inv => inv.id === invoiceId);
+    const projectId = invoiceToDelete?.project_id;
+
     const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
     if (error) {
         console.error("Error deleting invoice:", error.message);
         alert(`Error deleting invoice: ${error.message}`);
+        return;
     }
-  }, []);
+    
+    if (projectId) {
+        await updateProjectBudget(projectId);
+    }
+  }, [invoices, updateProjectBudget]);
 
   const handleSaveProject = useCallback(async (projectData: Omit<Project, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
     if (!session) return;
@@ -294,36 +393,71 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleSendMessage = useCallback(async (content: string) => {
+    if (!session || !content.trim()) return;
+
+    const newMessage = {
+        content: content.trim(),
+        user_id: session.user.id,
+        user_email: session.user.email || 'Unknown User'
+    };
+
+    const { error } = await supabase.from('messages').insert(newMessage);
+
+    if (error) {
+        console.error("Error sending message:", error.message);
+        alert(`Error sending message: ${error.message}`);
+    }
+  }, [session]);
+
   const renderContent = () => {
     switch (activePage) {
-      case 'Dashboard': return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
-      case 'Financials': return <Financials transactions={transactions} onSaveTransaction={handleSaveTransaction} onDeleteTransaction={handleDeleteTransaction} />;
-      case 'Projects': return <Projects projects={projects} employees={employees} clients={clients} onDeleteProject={handleDeleteProject} onSaveProject={handleSaveProject} onUpdateProjectDetails={handleProjectDetailsUpdate} onSaveClient={handleSaveClient} />;
-      case 'Invoices': return <Invoices invoices={invoices} projects={projects} clients={clients} onSave={handleSaveInvoice} onDelete={handleDeleteInvoice} onReceivePayment={handleReceivePayment} onSaveClient={handleSaveClient} />;
-      case 'Clients': return <Clients clients={clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} />;
-      case 'Human Resources': return <HumanResources employees={employees} onSaveEmployee={handleSaveEmployee} onDeleteEmployee={handleDeleteEmployee} />;
-      default: return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
+      case 'Dashboard':
+        return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
+      case 'Financials':
+        return <Financials transactions={transactions} onSaveTransaction={handleSaveTransaction} onDeleteTransaction={handleDeleteTransaction} />;
+      case 'Projects':
+        return <Projects projects={projects} employees={employees} clients={clients} onDeleteProject={handleDeleteProject} onSaveProject={handleSaveProject} onUpdateProjectDetails={handleProjectDetailsUpdate} onSaveClient={handleSaveClient} />;
+      case 'Invoices':
+        return <Invoices invoices={invoices} projects={projects} clients={clients} onSave={handleSaveInvoice} onDelete={handleDeleteInvoice} onReceivePayment={handleReceivePayment} onSaveClient={handleSaveClient} />;
+      case 'Clients':
+        return <Clients clients={clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} />;
+      case 'Human Resources':
+        return <HumanResources employees={employees} onSaveEmployee={handleSaveEmployee} onDeleteEmployee={handleDeleteEmployee} />;
+      case 'Chat':
+        return session && <Chat session={session} messages={messages} onSendMessage={handleSendMessage} />;
+      default:
+        return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
     }
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-xl font-semibold">Loading...</div>
+      </div>
+    );
   }
-  
+
   if (!session) {
     return <Login />;
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar 
+        activePage={activePage} 
+        setActivePage={setActivePage} 
+        isOpen={isSidebarOpen} 
+        setIsOpen={setIsSidebarOpen} 
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-            currentPage={activePage} 
-            toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-            onLogout={handleLogout}
+          currentPage={activePage} 
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onLogout={handleLogout}
         />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
           {renderContent()}
         </main>
       </div>

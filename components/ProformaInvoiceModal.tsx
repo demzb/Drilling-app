@@ -101,7 +101,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
     const newLineItems = [...invoice.line_items];
     const item = newLineItems[index];
     if (typeof item[field] === 'number') {
-        (item as any)[field] = value === '' ? '' : parseFloat(value as string) || 0;
+        (item as any)[field] = parseFloat(String(value)) || 0;
     } else {
         (item as any)[field] = value;
     }
@@ -221,7 +221,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
               <div className="space-y-2">
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Status</label>
-                      <select name="status" value={invoice.status} onChange={handleChange} disabled={!!invoiceToEdit} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm disabled:bg-gray-100 disabled:text-gray-500">
+                      <select name="status" value={invoice.status} onChange={handleChange} disabled={!!invoiceToEdit && invoiceToEdit.status !== InvoiceStatus.DRAFT} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm disabled:bg-gray-100 disabled:text-gray-500">
                           {Object.values(InvoiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                    </div>
@@ -231,7 +231,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                     </div>
                    <div className="flex items-center">
                       <label className="text-sm font-medium text-gray-700 w-32">Tax Rate (%)</label>
-                      <input type="number" name="tax_rate" value={invoice.tax_rate} onChange={handleChange} className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
+                      <input type="number" name="tax_rate" value={invoice.tax_rate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm" placeholder="0"/>
                    </div>
                    <div className="flex justify-between items-center pt-2 border-t mt-2">
                        <span className="text-lg font-semibold text-gray-800">Total</span>

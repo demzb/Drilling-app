@@ -166,3 +166,12 @@ export interface Project {
   user_id: string;
   created_at: string;
 }
+
+// Real-time Chat Types
+export interface Message {
+  id: number;
+  content: string;
+  user_id: string;
+  user_email: string;
+  created_at: string;
+}
