@@ -159,70 +159,83 @@ export const generateReceiptHtml = (invoice: Invoice, payment: Payment): string 
   const balanceDue = totalAmount - totalPaidAfterThisPayment;
 
   return `
-    <div style="font-family: Arial, sans-serif; color: #333; font-size: 12px; max-width: 800px; margin: auto;">
-      <table style="width: 100%; border-collapse: collapse;">
+    <div style="font-family: Arial, sans-serif; color: #333; font-size: 12px; max-width: 800px; margin: auto; padding: 20px;">
+      
+      <!-- Header -->
+      <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 20px;">
         <tr>
-          <td style="vertical-align: top;">
-            <h1 style="font-size: 28px; margin: 0; color: #000;">Payment Receipt</h1>
-            <p style="margin: 0; color: #555;">Receipt ID: ${payment.id}</p>
+          <td style="width: 66%; vertical-align: top;">
+            <h2 style="font-size: 18px; font-weight: bold; color: #2563EB; text-transform: uppercase; margin: 0;">YS BOREHOLE DRILLING COMPANY</h2>
+            <p style="font-size: 10px; margin: 0;">Deals in borehole drilling solar installation, plumbing and electrical specialist</p>
+            <p style="font-size: 10px; color: #555; margin: 8px 0 0 0;">Brusubi the Gambia west Africa</p>
+            <p style="font-size: 10px; color: #555; margin: 0;">Tel: +2203522014/7770568/2030995</p>
+            <p style="font-size: 10px; color: #555; margin: 0;">Email: yusuphasambou1234@gmail.com</p>
           </td>
-          <td style="text-align: right; vertical-align: top;">
-              <h2 style="font-size: 18px; margin: 0; color: #2563EB; text-transform: uppercase;">YS BOREHOLE DRILLING COMPANY</h2>
-              <p style="margin: 0; font-size: 10px;">Brusubi the Gambia west Africa</p>
-              <p style="margin: 0; font-size: 10px;">Tel: +2203522014/7770568/2030995</p>
+          <td style="width: 34%; text-align: right; vertical-align: top;">
+            <h1 style="font-size: 28px; font-weight: bold; text-transform: uppercase; margin: 0;">Receipt</h1>
+            <p style="margin: 5px 0 0 0;"><span style="font-weight: bold; color: #555; font-size: 11px;">Receipt No:</span> ${payment.id}</p>
+            <p style="margin: 0;"><span style="font-weight: bold; color: #555; font-size: 11px;">Date:</span> ${payment.date}</p>
           </td>
         </tr>
       </table>
 
-      <table style="width: 100%; border-collapse: collapse; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-          <tr>
-            <td style="width: 50%; vertical-align: top;">
-              <h3 style="font-size: 11px; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Received From</h3>
-              {/* Fix: Changed property to snake_case. */}
-              <p style="font-weight: bold; margin: 0;">${invoice.client_name}</p>
-              {/* Fix: Changed property to snake_case. */}
-              <p style="margin: 0; white-space: pre-line;">${invoice.client_address}</p>
-            </td>
-            <td style="width: 50%; text-align: right; vertical-align: top;">
-              <p style="margin: 0;"><span style="font-weight: bold;">Payment Date:</span> ${payment.date}</p>
-              <p style="margin: 0;"><span style="font-weight: bold;">Payment Method:</span> ${payment.method}</p>
-              ${payment.checkNumber ? `<p style="margin: 0;"><span style="font-weight: bold;">Check Number:</span> ${payment.checkNumber}</p>` : ''}
-            </td>
-          </tr>
+      <!-- Client & Payment Details -->
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px; padding-top: 20px;">
+        <tr>
+          <td style="width: 50%; vertical-align: top;">
+            <h3 style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Bill To</h3>
+            <p style="font-weight: bold; margin: 0;">${invoice.client_name}</p>
+            <p style="margin: 0; white-space: pre-line;">${invoice.client_address}</p>
+          </td>
+          <td style="width: 50%; text-align: right; vertical-align: top;">
+            <h3 style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #555; margin: 0 0 5px 0;">Payment Details</h3>
+            <p style="margin: 0;"><span style="font-weight: bold; color: #555; font-size: 11px;">Payment Method:</span> ${payment.method}</p>
+            ${payment.checkNumber ? `<p style="margin: 0;"><span style="font-weight: bold; color: #555; font-size: 11px;">Check Number:</span> ${payment.checkNumber}</p>` : ''}
+          </td>
+        </tr>
       </table>
 
-      <div style="margin-top: 30px; text-align: center; background-color: #f9f9f9; padding: 20px; border-radius: 5px;">
-        <h3 style="margin: 0; font-size: 14px; text-transform: uppercase; color: #555;">Amount Received</h3>
+      <!-- Amount Paid -->
+      <div style="margin-top: 30px; text-align: center; background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 5px;">
+        <h3 style="margin: 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #555; letter-spacing: 0.5px;">Amount Paid</h3>
         <p style="margin: 5px 0 0 0; font-size: 36px; font-weight: bold; color: #16a34a;">
           GMD ${payment.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}
         </p>
-        <p style="margin: 5px 0 0 0; text-transform: capitalize;">${numberToWords(payment.amount)}</p>
+        <p style="margin: 5px 0 0 0; text-transform: capitalize; color: #333;">${numberToWords(payment.amount)}</p>
       </div>
       
-      <table style="width: 100%; border-collapse: collapse; margin-top: 30px;">
+      <!-- Payment Summary -->
+      <div style="margin-top: 30px;">
+        <h3 style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px;">Payment Summary</h3>
+        <table style="width: 100%; border-collapse: collapse;">
           <thead>
-              <tr>
-                  <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">Description</th>
-                  <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: right;">Invoice Total</th>
-                  <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: right;">Balance Due</th>
-              </tr>
+            <tr>
+              <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: left;">Summary</th>
+              <th style="background-color: #f9f9f9; padding: 10px; border-bottom: 2px solid #ddd; text-align: right;">Amount</th>
+            </tr>
           </thead>
           <tbody>
-              <tr>
-                  <td style="padding: 10px; border-bottom: 1px solid #eee;">
-                      {/* Fix: Changed property to snake_case. */}
-                      Invoice: ${invoice.invoice_number}<br/>
-                      {/* Fix: Changed property to snake_case. */}
-                      ${invoice.project_name ? `<span style="font-size: 11px; color: #555;">Project: ${invoice.project_name}</span>` : ''}
-                  </td>
-                  <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">GMD ${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                  <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">GMD ${balanceDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-              </tr>
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">Invoice Total</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">GMD ${totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #eee;">Payment Received</td>
+              <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #16a34a;">GMD ${payment.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            </tr>
+            <tr style="background-color: #f9f9f9; font-weight: bold;">
+              <td style="padding: 10px;">Balance Due</td>
+              <td style="padding: 10px; text-align: right;">GMD ${balanceDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            </tr>
           </tbody>
-      </table>
+        </table>
+        <p style="font-size: 10px; color: #555; margin-top: 8px;">Payment applied to Invoice #${invoice.invoice_number}.</p>
+      </div>
 
-      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-          <p style="font-size: 12px; font-weight: bold;">Thank You!</p>
+      <!-- Footer -->
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 11px;">
+          <p style="font-weight: bold;">Thank you for your payment!</p>
+          <p style="color: #555; margin-top: 5px;">If you have any questions, please contact us at +220 7770568 or yusuphasambou1234@gmail.com</p>
       </div>
     </div>
   `;

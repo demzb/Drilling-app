@@ -21,33 +21,31 @@ const ReceiptContent: React.FC<{ invoice: Invoice; payment: Payment }> = ({ invo
     return (
         <div className="p-8 space-y-8 bg-white" id="receipt-content-for-print">
             {/* Header */}
-            <div className="flex justify-between items-start">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Payment Receipt</h1>
-                    <p className="text-gray-500">Receipt ID: {payment.id}</p>
-                </div>
-                <div className="text-right">
+            <div className="flex justify-between items-start border-b pb-6">
+                <div className="w-2/3">
                     <h2 className="text-xl font-bold text-blue-700 uppercase">YS BOREHOLE DRILLING COMPANY</h2>
                     <p className="text-xs text-gray-600">Deals in borehole drilling solar installation, plumbing and electrical specialist</p>
                     <p className="text-xs text-gray-500 mt-2">Brusubi the Gambia west Africa</p>
                     <p className="text-xs text-gray-500">Tel: +2203522014/7770568/2030995</p>
                     <p className="text-xs text-gray-500">Email: yusuphasambou1234@gmail.com</p>
                 </div>
+                <div className="w-1/3 text-right">
+                    <h1 className="text-3xl font-bold text-gray-800 uppercase">Receipt</h1>
+                    <p className="mt-1"><span className="font-semibold text-gray-500 text-sm">Receipt No:</span> {payment.id}</p>
+                    <p><span className="font-semibold text-gray-500 text-sm">Date:</span> {payment.date}</p>
+                </div>
             </div>
 
-            {/* Client & Dates */}
-            <div className="grid grid-cols-2 gap-8 border-t pt-6">
+            {/* Client & Payment Details */}
+            <div className="grid grid-cols-2 gap-8 pt-6">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase">Received From</h3>
-                    {/* Fix: Changed property to snake_case. */}
+                    <h3 className="text-sm font-semibold text-gray-500 uppercase">Bill To</h3>
                     <p className="font-medium text-gray-800">{invoice.client_name}</p>
-                    {/* Fix: Changed property to snake_case. */}
                     <p className="text-gray-600 whitespace-pre-line">{invoice.client_address}</p>
                 </div>
                 <div className="text-right">
+                     <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Payment Details</h3>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        <span className="font-semibold text-gray-500">Payment Date:</span>
-                        <span className="text-gray-800">{payment.date}</span>
                         <span className="font-semibold text-gray-500">Payment Method:</span>
                         <span className="text-gray-800">{payment.method}</span>
                         {payment.method === PaymentMethod.CHECK && payment.checkNumber && (
@@ -60,9 +58,9 @@ const ReceiptContent: React.FC<{ invoice: Invoice; payment: Payment }> = ({ invo
                 </div>
             </div>
 
-            {/* Amount Received */}
-            <div className="text-center bg-gray-50 p-6 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Amount Received</h3>
+            {/* Amount Paid */}
+            <div className="text-center bg-green-50 border border-green-200 p-6 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Amount Paid</h3>
                 <p className="text-5xl font-bold text-green-600 my-2">
                     GMD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </p>
@@ -71,34 +69,36 @@ const ReceiptContent: React.FC<{ invoice: Invoice; payment: Payment }> = ({ invo
 
             {/* Summary Table */}
             <div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Payment Summary</h3>
                 <table className="w-full text-left">
                     <thead>
                         <tr className="bg-gray-50 text-sm font-semibold text-gray-600">
-                            <th className="p-3">Description</th>
-                            <th className="p-3 text-right">Invoice Total</th>
-                            <th className="p-3 text-right">Balance Due After Payment</th>
+                            <th className="p-3">Summary</th>
+                            <th className="p-3 text-right">Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr className="border-b">
-                            <td className="p-3">
-                                {/* Fix: Changed property to snake_case. */}
-                                <p>Payment for Invoice #{invoice.invoice_number}</p>
-                                {/* Fix: Changed property to snake_case. */}
-                                {invoice.project_name && (
-                                    <p className="text-xs text-gray-500">Project: {invoice.project_name}</p>
-                                )}
-                            </td>
+                            <td className="p-3">Invoice Total</td>
                             <td className="p-3 text-right">GMD {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                            <td className="p-3 text-right font-medium">GMD {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                         <tr className="border-b">
+                            <td className="p-3">Payment Received</td>
+                            <td className="p-3 text-right font-medium text-green-600">GMD {payment.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                         <tr className="bg-gray-50 font-semibold">
+                            <td className="p-3">Balance Due</td>
+                            <td className="p-3 text-right">GMD {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         </tr>
                     </tbody>
                 </table>
+                <p className="text-xs text-gray-500 mt-2">Payment applied to Invoice #{invoice.invoice_number}.</p>
             </div>
 
             {/* Footer */}
             <div className="text-center text-sm text-gray-500 border-t pt-4">
-                <p className="font-semibold">Thank You!</p>
+                <p className="font-semibold">Thank you for your payment!</p>
+                <p>If you have any questions, please contact us at +220 7770568 or yusuphasambou1234@gmail.com</p>
             </div>
         </div>
     );

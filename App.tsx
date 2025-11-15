@@ -10,8 +10,7 @@ import Invoices from './components/Invoices';
 import Projects from './components/Projects';
 import Clients from './components/Clients';
 import Login from './components/Login';
-import Chat from './components/Chat';
-import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client, ProjectStatus, Message } from './types';
+import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client, ProjectStatus } from './types';
 import { getInvoiceTotal } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
@@ -26,7 +25,6 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
 
   // --- Auth & Data Loading ---
   useEffect(() => {
@@ -46,7 +44,6 @@ const App: React.FC = () => {
         setEmployees([]);
         setTransactions([]);
         setClients([]);
-        setMessages([]);
       }
     });
 
@@ -65,14 +62,12 @@ const App: React.FC = () => {
             invoicesRes,
             projectsRes,
             transactionsRes,
-            messagesRes
         ] = await Promise.all([
             supabase.from('clients').select('*').order('created_at', { ascending: false }),
             supabase.from('employees').select('*').order('created_at', { ascending: false }),
             supabase.from('invoices').select('*').order('created_at', { ascending: false }),
             supabase.from('projects').select('*').order('created_at', { ascending: false }),
             supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-            supabase.from('messages').select('*').order('created_at', { ascending: true }),
         ]);
 
         if (clientsRes.data) setClients(clientsRes.data);
@@ -80,7 +75,6 @@ const App: React.FC = () => {
         if (invoicesRes.data) setInvoices(invoicesRes.data);
         if (projectsRes.data) setProjects(projectsRes.data);
         if (transactionsRes.data) setTransactions(transactionsRes.data);
-        if (messagesRes.data) setMessages(messagesRes.data);
     };
 
     fetchAllData();
@@ -116,17 +110,12 @@ const App: React.FC = () => {
         if (payload.eventType === 'DELETE') setTransactions(current => current.filter(t => t.id !== payload.old.id));
     }).subscribe();
 
-    const messageChannel = supabase.channel('public:messages').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-      setMessages(current => [...current, payload.new as Message]);
-    }).subscribe();
-
     return () => {
         supabase.removeChannel(clientChannel);
         supabase.removeChannel(employeeChannel);
         supabase.removeChannel(invoiceChannel);
         supabase.removeChannel(projectChannel);
         supabase.removeChannel(transactionChannel);
-        supabase.removeChannel(messageChannel);
     };
   }, [session]);
 
@@ -393,23 +382,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string) => {
-    if (!session || !content.trim()) return;
-
-    const newMessage = {
-        content: content.trim(),
-        user_id: session.user.id,
-        user_email: session.user.email || 'Unknown User'
-    };
-
-    const { error } = await supabase.from('messages').insert(newMessage);
-
-    if (error) {
-        console.error("Error sending message:", error.message);
-        alert(`Error sending message: ${error.message}`);
-    }
-  }, [session]);
-
   const renderContent = () => {
     switch (activePage) {
       case 'Dashboard':
@@ -424,8 +396,6 @@ const App: React.FC = () => {
         return <Clients clients={clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} />;
       case 'Human Resources':
         return <HumanResources employees={employees} onSaveEmployee={handleSaveEmployee} onDeleteEmployee={handleDeleteEmployee} />;
-      case 'Chat':
-        return session && <Chat session={session} messages={messages} onSendMessage={handleSendMessage} />;
       default:
         return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
     }

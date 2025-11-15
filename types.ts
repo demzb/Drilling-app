@@ -167,11 +167,11 @@ export interface Project {
   created_at: string;
 }
 
-// Real-time Chat Types
+// FIX: Added the missing Message interface for the Chat component.
 export interface Message {
   id: number;
   content: string;
+  created_at: string;
   user_id: string;
   user_email: string;
-  created_at: string;
 }
