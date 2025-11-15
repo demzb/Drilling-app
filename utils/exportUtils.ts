@@ -320,7 +320,7 @@ export const printProjectsList = (projects: Project[]) => {
 export const exportProjectDetailToCSV = (project: Project) => {
     let csvContent = '';
 
-    const addSection = (title: string, headers: string[], data: string[][]) => {
+    const addSection = (title: string, headers: string[], data: (string | number)[][]) => {
         csvContent += `\n${title}\n`;
         csvContent += headers.join(',') + '\n';
         data.forEach(row => {
@@ -352,3 +352,67 @@ export const exportProjectDetailToCSV = (project: Project) => {
     const totalProjectCost = totalMaterialCost + totalStaffCost + totalOtherCost;
     // Fix: Changed property to snake_case.
     const netProfit = project.amount_received - totalProjectCost;
+    
+    const financialData = [
+        ['Total Budget', project.total_budget],
+        ['Amount Received', project.amount_received],
+        ['Total Material Cost', totalMaterialCost],
+        ['Total Staff Cost', totalStaffCost],
+        ['Total Other Cost', totalOtherCost],
+        ['Total Project Cost', totalProjectCost],
+        ['Net Profit/Loss', netProfit],
+    ];
+    csvContent += '\nFinancial Summary\n';
+    financialData.forEach(row => {
+        csvContent += row.map(escapeCsvCell).join(',') + '\n';
+    });
+
+    // Section 3: Materials
+    if (project.materials.length > 0) {
+        addSection(
+            'Materials',
+            ['Name', 'Quantity', 'Unit Cost', 'Total Cost'],
+            project.materials.map(mat => [
+                mat.name,
+                mat.quantity,
+                mat.unitCost,
+                mat.quantity * mat.unitCost
+            ])
+        );
+    }
+
+    // Section 4: Staff
+    if (project.staff.length > 0) {
+        addSection(
+            'Assigned Staff',
+            ['Name', 'Role', 'Payment'],
+            project.staff.map(s => [
+                s.employeeName,
+                s.projectRole,
+                s.paymentAmount
+            ])
+        );
+    }
+
+    // Section 5: Other Expenses
+    if (project.other_expenses.length > 0) {
+        addSection(
+            'Other Expenses',
+            ['Description', 'Amount'],
+            project.other_expenses.map(exp => [
+                exp.description,
+                exp.amount
+            ])
+        );
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `project_${project.id}_details.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
