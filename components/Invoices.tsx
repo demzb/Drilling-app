@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment, Client, PaymentMethod } from '../types';
-import InvoiceModal from './InvoiceModal';
+import InvoiceEditor from './InvoiceEditor';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import ConfirmationModal from './ConfirmationModal';
 import InvoicePaymentModal from './InvoicePaymentModal';
@@ -19,11 +19,12 @@ interface InvoicesProps {
 }
 
 const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment, onSaveClient }) => {
-    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
+    const [view, setView] = useState<'list' | 'editor'>('list');
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+    const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -51,8 +52,8 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
 
     const handleSaveInvoice = async (invoiceData: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => {
         await onSave(invoiceData);
-        setIsInvoiceModalOpen(false);
-        setSelectedInvoice(null);
+        setView('list');
+        setInvoiceToEdit(null);
     }
 
     const handleOpenPaymentModal = (invoice: Invoice) => {
@@ -80,14 +81,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         }
     };
     
-    const handleOpenCreateModal = () => {
-        setSelectedInvoice(null);
-        setIsInvoiceModalOpen(true);
+    const handleOpenCreate = () => {
+        setInvoiceToEdit(null);
+        setView('editor');
     };
 
-    const handleOpenEditModal = (invoice: Invoice) => {
-        setSelectedInvoice(invoice);
-        setIsInvoiceModalOpen(true);
+    const handleOpenEdit = (invoice: Invoice) => {
+        setInvoiceToEdit(invoice);
+        setView('editor');
     };
 
     const handleOpenHistoryModal = (invoice: Invoice) => {
@@ -145,19 +146,23 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         return result;
     }, [invoices, statusFilter, sortOrder]);
 
+    if(view === 'editor') {
+      return (
+        <InvoiceEditor
+          invoiceToEdit={invoiceToEdit}
+          onCancel={() => setView('list')}
+          onSave={handleSaveInvoice}
+          nextInvoiceNumber={getNextInvoiceNumber()}
+          projects={projects}
+          clients={clients}
+          onSaveClient={onSaveClient}
+          onReceivePayment={onReceivePayment}
+        />
+      );
+    }
 
     return (
         <div className="space-y-6">
-            <InvoiceModal
-                isOpen={isInvoiceModalOpen}
-                onClose={() => setIsInvoiceModalOpen(false)}
-                onSave={handleSaveInvoice}
-                nextInvoiceNumber={getNextInvoiceNumber()}
-                projects={projects}
-                clients={clients}
-                invoiceToEdit={selectedInvoice}
-                onSaveClient={onSaveClient}
-            />
             {selectedInvoice && (
                 <InvoiceDetailModal
                     isOpen={isDetailModalOpen}
@@ -221,7 +226,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                             Sort by Date ({sortOrder === 'newest' ? 'Newest' : 'Oldest'})
                         </button>
                          <button
-                            onClick={handleOpenCreateModal}
+                            onClick={handleOpenCreate}
                             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors shadow-md flex items-center"
                         >
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
@@ -282,7 +287,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                             <div className="bg-gray-50/50 px-2 py-2 flex justify-center items-center border-t">
                                 <div className="flex flex-wrap justify-center gap-x-1 gap-y-1">
                                     <button onClick={() => handleViewDetails(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>View</button>
-                                    <button onClick={() => handleOpenEditModal(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>Edit</button>
+                                    <button onClick={() => handleOpenEdit(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>Edit</button>
                                     {invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.DRAFT && (
                                         <button onClick={() => handleOpenPaymentModal(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-green-700 hover:bg-green-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>Pay</button>
                                     )}

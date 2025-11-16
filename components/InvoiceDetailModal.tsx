@@ -13,8 +13,8 @@ interface InvoiceDetailModalProps {
 const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose, invoice }) => {
   if (!isOpen) return null;
 
-  const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-  const discount = invoice.discount_amount || 0;
+  const subtotal = (invoice.line_items || []).reduce((acc, item) => acc + (item.quantity * item.rate), 0);
+  const discount = invoice.discount_amount;
   const discountedSubtotal = subtotal - discount;
   const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
   
@@ -113,82 +113,77 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({ isOpen, onClose
             <div className="-mt-4">
                  <p className="text-sm text-center text-blue-600 font-medium mt-1">Project: {invoice.project_name} - {invoice.borehole_type}</p>
             </div>
-           )}
+          )}
 
-          {/* Line Items Table */}
-          <div>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-gray-50 text-sm font-semibold text-gray-600">
-                  <th className="p-3">Description</th>
-                  <th className="p-3 text-center">Qty</th>
-                  <th className="p-3 text-right">Unit Price</th>
-                  <th className="p-3 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.line_items.map(item => (
-                  <tr key={item.id} className="border-b">
-                    <td className="p-3">{item.description}</td>
-                    <td className="p-3 text-center">{item.quantity}</td>
-                    <td className="p-3 text-right">GMD {item.unitPrice.toFixed(2)}</td>
-                    <td className="p-3 text-right font-medium">GMD {(item.quantity * item.unitPrice).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Items Table */}
+          <div className="flow-root">
+              <table className="min-w-full text-left">
+                  <thead className="bg-gray-50">
+                      <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                          <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {(invoice.line_items || []).map((item) => (
+                          <tr key={item.id} className="border-b border-gray-200">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.description}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">{item.quantity}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">GMD {item.rate.toFixed(2)}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-semibold text-right">GMD {(item.quantity * item.rate).toFixed(2)}</td>
+                          </tr>
+                      ))}
+                  </tbody>
+              </table>
           </div>
-          
-          {/* Totals & Payment Terms */}
-          <div className="flex justify-between items-start pt-6 border-t">
-            <div className="w-2/5 pr-4">
-                 <h4 className="text-sm font-semibold text-gray-500 uppercase mb-2">Notes</h4>
-                 <p className="text-sm text-gray-700 whitespace-pre-line">{invoice.notes}</p>
-                 <div className="mt-4">
-                    <p className="font-semibold text-sm text-gray-800">Amount in Words:</p>
-                    <p className="text-xs text-gray-600 capitalize">{numberToWords(amountDueValue)}</p>
-                </div>
-            </div>
-            <div className="w-3/5 max-w-sm space-y-2">
-                <div className="flex justify-between">
-                    <span className="text-gray-500">Subtotal:</span>
-                    <span className="font-medium text-gray-800">GMD {subtotal.toFixed(2)}</span>
+
+          {/* Totals */}
+          <div className="flex justify-end">
+            <div className="w-full max-w-sm space-y-3">
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Subtotal</span>
+                    <span className="text-gray-700">GMD {subtotal.toFixed(2)}</span>
                 </div>
                 {discount > 0 && (
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Discount:</span>
-                        <span className="font-medium text-green-600">- GMD {discount.toFixed(2)}</span>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Discount</span>
+                        <span className="text-green-600">- GMD {discount.toFixed(2)}</span>
                     </div>
                 )}
-                <div className="flex justify-between">
-                    <span className="text-gray-500">Tax ({invoice.tax_rate}%):</span>
-                    <span className="font-medium text-gray-800">GMD {taxAmount.toFixed(2)}</span>
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Tax ({invoice.tax_rate}%)</span>
+                    <span className="text-gray-700">GMD {taxAmount.toFixed(2)}</span>
                 </div>
-                 <div className="flex justify-between border-t pt-2 mt-2">
-                    <span className="font-semibold text-gray-800">Total:</span>
-                    <span className="font-semibold text-gray-800">GMD {totalAmount.toFixed(2)}</span>
+                <div className="flex justify-between font-semibold text-base pt-2 border-t">
+                    <span className="text-gray-800">Total</span>
+                    <span className="text-gray-800">GMD {totalAmount.toFixed(2)}</span>
                 </div>
-                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Amount Paid:</span>
-                    <span className="font-medium text-green-600">- GMD {totalPaid.toFixed(2)}</span>
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Amount Paid</span>
+                    <span className="text-green-600">- GMD {totalPaid.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between bg-gray-100 p-3 rounded-md mt-2">
-                    <span className="font-bold text-lg text-gray-800">{amountDueLabel}</span>
-                    <span className="font-bold text-lg text-gray-800">GMD {amountDueValue.toFixed(2)}</span>
+                <div className="flex justify-between font-bold text-lg pt-2 border-t bg-gray-100 p-3 rounded-md">
+                    <span className="text-gray-900">{amountDueLabel}</span>
+                    <span className="text-gray-900">GMD {amountDueValue.toFixed(2)}</span>
                 </div>
             </div>
           </div>
           
-           {/* Footer Notes */}
-          <div className="text-center text-xs text-gray-500 border-t pt-4">
-            <p>Thank you for your business. Please make payment to the specified account.</p>
-          </div>
+           {/* Notes & Amount in Words */}
+           <div className="pt-6 border-t">
+                <p className="text-sm font-semibold text-gray-700">Amount in Words:</p>
+                <p className="text-sm text-gray-600 capitalize">{numberToWords(amountDueValue)}</p>
+                <p className="text-sm font-semibold text-gray-700 mt-4">Notes:</p>
+                <p className="text-sm text-gray-600">{invoice.notes}</p>
+            </div>
         </div>
 
         <div className="flex justify-end items-center p-4 bg-gray-50 border-t no-print">
-          <button onClick={handleExportToWord} className="px-4 py-2 bg-blue-500 text-white rounded-md mr-2 hover:bg-blue-600">Export to Word</button>
-          <button onClick={handlePrint} className="px-4 py-2 bg-green-500 text-white rounded-md mr-2 hover:bg-green-600">Print</button>
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
+            <button onClick={handleExportToWord} className="px-4 py-2 bg-blue-500 text-white rounded-md mr-2 hover:bg-blue-600">Export to Word</button>
+            <button onClick={handlePrint} className="px-4 py-2 bg-green-500 text-white rounded-md mr-2 hover:bg-green-600">Print / Save as PDF</button>
+            <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Close</button>
         </div>
       </div>
     </div>

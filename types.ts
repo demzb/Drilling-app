@@ -50,9 +50,11 @@ export interface ProjectSummary {
 // Invoice Types
 export interface LineItem {
   id: string;
+  product_service: string;
+  sku: string;
   description: string;
   quantity: number;
-  unitPrice: number;
+  rate: number;
 }
 
 export enum InvoiceStatus {
@@ -109,11 +111,15 @@ export interface Invoice {
   invoice_number: string;
   client_id?: string;
   client_name: string;
+  client_email?: string;
   client_address: string;
   date: string;
   due_date: string;
+  terms: string;
+  send_later: boolean;
   line_items: LineItem[];
-  notes: string;
+  notes: string; // "Message on invoice"
+  statement_message: string; // "Message on statement"
   tax_rate: number; // Percentage
   discount_amount: number; // Fixed discount amount
   status: InvoiceStatus;

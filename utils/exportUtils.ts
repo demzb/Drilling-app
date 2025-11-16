@@ -90,7 +90,7 @@ export const printReport = (title: string, headers: string[], data: any[]) => {
 // --- Specific Document Generators (Invoices, Receipts) ---
 
 export const generateInvoiceWordHtml = (invoice: Invoice): string => {
-  const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+  const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
   const discount = invoice.discount_amount || 0;
   const discountedSubtotal = subtotal - discount;
   const taxAmount = discountedSubtotal * (invoice.tax_rate / 100);
@@ -122,10 +122,10 @@ export const generateInvoiceWordHtml = (invoice: Invoice): string => {
 
   const lineItemsHtml = invoice.line_items.map(item => `
     <tr>
-      <td style="${styles.td}">${item.description}</td>
+      <td style="${styles.td}">${item.product_service} ${item.description ? `<br/><small style="color: #555;">${item.description}</small>` : ''}</td>
       <td style="${styles.td} text-align: center;">${item.quantity}</td>
-      <td style="${styles.td} text-align: right;">GMD ${item.unitPrice.toFixed(2)}</td>
-      <td style="${styles.td} text-align: right; font-weight: bold;">GMD ${(item.quantity * item.unitPrice).toFixed(2)}</td>
+      <td style="${styles.td} text-align: right;">GMD ${item.rate.toFixed(2)}</td>
+      <td style="${styles.td} text-align: right; font-weight: bold;">GMD ${(item.quantity * item.rate).toFixed(2)}</td>
     </tr>
   `).join('');
   

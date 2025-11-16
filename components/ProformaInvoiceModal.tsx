@@ -18,7 +18,8 @@ const emptyInvoice = {
   client_address: '',
   date: new Date().toISOString().split('T')[0],
   due_date: '',
-  line_items: [{ id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+  // FIX: Changed unitPrice to rate to match the LineItem type.
+  line_items: [{ id: Date.now().toString(), description: '', quantity: 1, rate: 0, product_service: '', sku: '' }],
   notes: 'Thank you for your business. Please make payment to the specified account.',
   tax_rate: 0,
   discount_amount: 0,
@@ -28,6 +29,9 @@ const emptyInvoice = {
   invoice_type: InvoiceType.PROFORMA,
   payments: [],
   borehole_type: BoreholeType.SOLAR_MEDIUM,
+  send_later: false,
+  statement_message: '',
+  terms: ''
 };
 
 
@@ -54,7 +58,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
 
 
   useEffect(() => {
-    const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+    // FIX: Changed item.unitPrice to item.rate to match the LineItem type.
+    const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
     const discount = parseFloat(String(invoice.discount_amount)) || 0;
     const discountedSubtotal = subtotal - discount;
     const taxAmount = discountedSubtotal * ((parseFloat(String(invoice.tax_rate)) || 0) / 100);
@@ -100,7 +105,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   const handleLineItemChange = (index: number, field: keyof LineItem, value: string | number) => {
     const newLineItems = [...invoice.line_items];
     const item = newLineItems[index];
-    if (typeof item[field] === 'number') {
+    if (typeof (item as any)[field] === 'number') {
         (item as any)[field] = parseFloat(String(value)) || 0;
     } else {
         (item as any)[field] = value;
@@ -111,7 +116,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   const addLineItem = () => {
     setInvoice({
       ...invoice,
-      line_items: [...invoice.line_items, { id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+      // FIX: Changed unitPrice to rate to match the LineItem type.
+      line_items: [...invoice.line_items, { id: Date.now().toString(), description: '', quantity: 1, rate: 0, product_service: '', sku: '' }],
     });
   };
 
@@ -202,8 +208,9 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
                 <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
                   <input type="text" placeholder="Description" value={item.description} onChange={(e) => handleLineItemChange(index, 'description', e.target.value)} className="col-span-6 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
                   <input type="number" placeholder="Qty" value={item.quantity} onChange={(e) => handleLineItemChange(index, 'quantity', e.target.value)} className="col-span-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
-                  <input type="number" placeholder="Unit Price" value={item.unitPrice} onChange={(e) => handleLineItemChange(index, 'unitPrice', e.target.value)} className="col-span-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
-                  <p className="col-span-1 text-right text-sm text-gray-600">{(item.quantity * item.unitPrice).toFixed(2)}</p>
+                  {/* FIX: Changed unitPrice to rate to match the LineItem type. */}
+                  <input type="number" placeholder="Unit Price" value={item.rate} onChange={(e) => handleLineItemChange(index, 'rate', e.target.value)} className="col-span-2 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"/>
+                  <p className="col-span-1 text-right text-sm text-gray-600">{(item.quantity * item.rate).toFixed(2)}</p>
                   <button onClick={() => removeLineItem(index)} className="col-span-1 text-red-500 hover:text-red-700">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
