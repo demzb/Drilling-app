@@ -31,15 +31,11 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
             invoice_number: nextInvoiceNumber,
             project_id: '',
             client_name: '',
-            client_email: '',
             client_address: '',
             date: initialDate,
             due_date: dueDate.toISOString().split('T')[0],
-            terms: 'Net 30',
-            send_later: false,
             line_items: [{ id: Date.now().toString(), ...emptyLineItem }],
             notes: 'Thank you for your business.',
-            statement_message: '',
             tax_rate: 0,
             discount_amount: 0,
             status: InvoiceStatus.DRAFT,
@@ -47,7 +43,8 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
             payments: [],
         };
     });
-
+    
+    const [displayClientEmail, setDisplayClientEmail] = useState('');
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
     useEffect(() => {
@@ -55,12 +52,10 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
             const { user_id, created_at, ...editableInvoice } = invoiceToEdit;
             setInvoice({
                 ...editableInvoice,
-                client_email: clients.find(c => {
-                    const project = projects.find(p => p.id === editableInvoice.project_id);
-                    return project?.client_id === c.id;
-                })?.email || '',
-                statement_message: editableInvoice.statement_message || '',
             });
+            const projectForInvoice = projects.find(p => p.id === editableInvoice.project_id);
+            const clientForProject = projectForInvoice ? clients.find(c => c.id === projectForInvoice.client_id) : null;
+            setDisplayClientEmail(clientForProject?.email || '');
         }
     }, [invoiceToEdit, clients, projects]);
 
@@ -88,8 +83,8 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
             project_name: selectedProject ? selectedProject.name : undefined,
             client_name: projectClient ? projectClient.name : (selectedProject ? selectedProject.client_name : ''),
             client_address: projectClient ? projectClient.address : '',
-            client_email: projectClient ? projectClient.email : ''
         }));
+        setDisplayClientEmail(projectClient ? projectClient.email : '');
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -192,32 +187,13 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
                                 </div>
                                  <div>
                                     <label className="text-sm font-medium text-gray-700 flex items-center">Customer email <HelpCircleIcon /></label>
-                                    <input type="email" name="client_email" value={invoice.client_email || ''} readOnly className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" />
+                                    <input type="email" name="client_email" value={displayClientEmail} readOnly className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" />
                                 </div>
                             </div>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                               
-                                 <div className="flex items-end">
-                                    <div className="flex items-center">
-                                        <input id="send_later" name="send_later" type="checkbox" checked={invoice.send_later} onChange={handleInputChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                                        <label htmlFor="send_later" className="ml-2 block text-sm text-gray-900">Send later</label>
-                                        <HelpCircleIcon />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="text-sm font-medium text-gray-700">Billing address</label>
                                     <textarea name="client_address" value={invoice.client_address} readOnly rows={4} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100"></textarea>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700">Terms</label>
-                                    <select name="terms" value={invoice.terms} onChange={handleInputChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                        <option>Net 30</option>
-                                        <option>Net 15</option>
-                                        <option>Net 60</option>
-                                        <option>Due on receipt</option>
-                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-700">Invoice date</label>
@@ -285,10 +261,6 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
                              <div>
                                 <label className="text-sm font-medium text-gray-700">Message on invoice</label>
                                 <textarea name="notes" value={invoice.notes} onChange={handleInputChange} rows={4} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="This will show up on the invoice."></textarea>
-                             </div>
-                             <div>
-                                <label className="text-sm font-medium text-gray-700">Message on statement</label>
-                                <textarea name="statement_message" value={invoice.statement_message} onChange={handleInputChange} rows={4} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="If you send statements to customers, this will show up as the description for this invoice."></textarea>
                              </div>
                              <div>
                                 <h3 className="text-sm font-medium text-gray-700">Attachments</h3>

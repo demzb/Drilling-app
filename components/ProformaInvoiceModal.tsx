@@ -28,9 +28,6 @@ const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at'> = {
   invoice_type: InvoiceType.PROFORMA,
   payments: [],
   borehole_type: BoreholeType.SOLAR_MEDIUM,
-  send_later: false,
-  statement_message: '',
-  terms: ''
 };
 
 

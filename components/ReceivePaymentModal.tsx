@@ -9,14 +9,16 @@ interface ReceivePaymentModalProps {
 }
 
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ isOpen, onClose, onSave, project }) => {
-    const pendingAmount = project.totalBudget - project.amountReceived;
+    // FIX: Changed property to snake_case to match Project type.
+    const pendingAmount = project.total_budget - project.amount_received;
     const [amount, setAmount] = useState(pendingAmount.toString());
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
 
     useEffect(() => {
         if (isOpen) {
-            setAmount((project.totalBudget - project.amountReceived).toString());
+            // FIX: Changed property to snake_case to match Project type.
+            setAmount((project.total_budget - project.amount_received).toString());
             setDate(new Date().toISOString().split('T')[0]);
             setNotes('');
         }

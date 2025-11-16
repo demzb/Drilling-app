@@ -127,10 +127,12 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
     
     const generateProjectProfitabilityReport = () => {
         setIsLoading(true);
-        const data: ProjectProfitabilityReportItem[] = projects.map(p => {
-            const materialCosts = p.materials.reduce((sum, m) => sum + (m.quantity * m.unitCost), 0);
-            const staffCosts = p.staff.reduce((sum, s) => sum + s.paymentAmount, 0);
-            const otherCosts = p.other_expenses.reduce((sum, e) => sum + e.amount, 0);
+        // FIX: Explicitly type the 'p' parameter to ensure correct type inference for its properties.
+        const data: ProjectProfitabilityReportItem[] = projects.map((p: Project) => {
+            // FIX: Explicitly type the accumulator in reduce to prevent incorrect type inference to 'unknown'.
+            const materialCosts = (p.materials || []).reduce((sum: number, m) => sum + (m.quantity * m.unitCost), 0);
+            const staffCosts = (p.staff || []).reduce((sum: number, s) => sum + s.paymentAmount, 0);
+            const otherCosts = (p.other_expenses || []).reduce((sum: number, e) => sum + e.amount, 0);
             const totalCosts = materialCosts + staffCosts + otherCosts;
             const netProfit = p.amount_received - totalCosts;
 
