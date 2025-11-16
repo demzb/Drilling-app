@@ -288,31 +288,63 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                                         )}
                                     </div>
                                 </div>
-                                <div className="bg-gray-50/70 px-4 py-3 flex flex-wrap justify-end items-center gap-x-4 gap-y-2 border-t">
+                                <div className="bg-gray-50/70 px-4 py-3 flex flex-wrap justify-end items-center gap-x-2 gap-y-2 border-t">
                                     {invoice.status === InvoiceStatus.DRAFT && (
                                         <button
                                             onClick={() => handleMarkAsSent(invoice)}
-                                            className="flex items-center text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md transition-colors shadow-sm"
-                                            title="Mark this invoice as sent to the client"
+                                            className="flex items-center text-xs font-medium text-blue-600 hover:bg-blue-50 rounded-md p-1.5 transition-colors"
+                                            title="Mark as Sent"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.428A1 1 0 009.894 15V4a1 1 0 011-1h.002a1 1 0 01.998 1.117l-1 8a1 1 0 00.894.883l5-1.428a1 1 0 001.17-1.408l-7-14z" />
                                             </svg>
-                                            Mark as Sent
+                                            <span>Send</span>
                                         </button>
                                     )}
                                     {![InvoiceStatus.DRAFT, InvoiceStatus.PAID].includes(invoice.status) && (
-                                        <button onClick={() => handleOpenPaymentModal(invoice)} className="flex items-center text-sm font-medium text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-md transition-colors shadow-sm">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>
-                                            Receive Payment
+                                        <button 
+                                            onClick={() => handleOpenPaymentModal(invoice)} 
+                                            className="flex items-center text-xs font-medium text-green-600 hover:bg-green-50 rounded-md p-1.5 transition-colors"
+                                            title="Receive Payment"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>
+                                            <span>Pay</span>
                                         </button>
                                     )}
-                                    <button onClick={() => handleViewDetails(invoice)} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">View Details</button>
+                                    <button 
+                                        onClick={() => handleViewDetails(invoice)} 
+                                        className="flex items-center text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                        title="View Details"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        <span>Details</span>
+                                    </button>
                                     {invoice.payments && invoice.payments.length > 0 && (
-                                        <button onClick={() => handleOpenHistoryModal(invoice)} className="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">History</button>
+                                        <button 
+                                            onClick={() => handleOpenHistoryModal(invoice)} 
+                                            className="flex items-center text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                            title="Payment History"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span>History</span>
+                                        </button>
                                     )}
-                                    <button onClick={() => handleOpenEdit(invoice)} className="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Edit</button>
-                                    <button onClick={() => handleDeleteRequest(invoice)} className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors">Delete</button>
+                                    <button 
+                                        onClick={() => handleOpenEdit(invoice)} 
+                                        className="flex items-center text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-md p-1.5 transition-colors"
+                                        title="Edit Invoice"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg>
+                                        <span>Edit</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDeleteRequest(invoice)} 
+                                        className="flex items-center text-xs font-medium text-red-600 hover:bg-red-50 rounded-md p-1.5 transition-colors"
+                                        title="Delete Invoice"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        <span>Delete</span>
+                                    </button>
                                 </div>
                             </div>
                         )

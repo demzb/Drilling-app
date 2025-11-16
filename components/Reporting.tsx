@@ -90,7 +90,6 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
         const incomeTransactions = filtered.filter(t => t.type === TransactionType.INCOME);
         const expenseTransactions = filtered.filter(t => t.type === TransactionType.EXPENSE);
 
-        // FIX: Explicitly type reduce parameters to prevent type inference issues.
         const totalIncome = incomeTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
         // FIX: Explicitly type reduce parameters to prevent type inference issues.
