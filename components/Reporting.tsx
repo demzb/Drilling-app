@@ -129,8 +129,9 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
     const generateProjectProfitabilityReport = () => {
         setIsLoading(true);
         const data: ProjectProfitabilityReportItem[] = projects.map(p => {
-            // FIX: Added initial value to reduce() calls to prevent type errors when operating on empty arrays.
+            // FIX: Added initial value 0 to reduce() calls to prevent type errors when operating on empty arrays.
             const materialCosts = p.materials.reduce((sum, m) => sum + (m.quantity * m.unitCost), 0);
+            // FIX: Added initial value 0 to reduce() to prevent type errors when operating on empty arrays.
             const staffCosts = p.staff.reduce((sum, s) => sum + s.paymentAmount, 0);
             const otherCosts = p.other_expenses.reduce((sum, e) => sum + e.amount, 0);
             const totalCosts = materialCosts + staffCosts + otherCosts;

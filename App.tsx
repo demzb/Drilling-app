@@ -11,12 +11,13 @@ import Projects from './components/Projects';
 import Clients from './components/Clients';
 import Reporting from './components/Reporting';
 import Login from './components/Login';
+import FlowchartPage from './components/FlowchartPage';
 import { Project, Invoice, Employee, Transaction, TransactionType, Payment, Client, ProjectStatus } from './types';
 import { getInvoiceTotal } from './utils/invoiceUtils';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
-  const [activePage, setActivePage] = useState('Dashboard');
+  const [activePage, setActivePage] = useState('Flowchart');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -464,6 +465,8 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (activePage) {
+      case 'Flowchart':
+        return <FlowchartPage setActivePage={setActivePage} />;
       case 'Dashboard':
         return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
       case 'Financials':
@@ -479,7 +482,7 @@ const App: React.FC = () => {
       case 'Reporting':
         return <Reporting projects={projects} transactions={transactions} invoices={invoices} clients={clients} employees={employees} />;
       default:
-        return <Dashboard projects={projects} transactions={transactions} invoices={invoices} />;
+        return <FlowchartPage setActivePage={setActivePage} />;
     }
   };
 

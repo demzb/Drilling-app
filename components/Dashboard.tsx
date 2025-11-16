@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Card from './Card';
 import { Project, Transaction, Invoice, TransactionType, InvoiceStatus, ProjectStatus } from '../types';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
@@ -9,8 +8,6 @@ interface DashboardProps {
   transactions: Transaction[];
   invoices: Invoice[];
 }
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF4560', '#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', '#E6B333'];
 
 const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices }) => {
   const [startDate, setStartDate] = useState<string>('');
@@ -99,27 +96,17 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
     [projects]
   );
 
-  // --- Chart Data Calculations ---
-  // Expense breakdown donut chart data
-  const expenseByCategory = filteredTransactions
-    .filter(t => t.type === TransactionType.EXPENSE)
-    .reduce((acc, t) => {
-        acc[t.category] = (acc[t.category] || 0) + t.amount;
-        return acc;
-    }, {} as Record<string, number>);
-
-  const expenseData = Object.entries(expenseByCategory).map(([name, value]) => ({ name, value }));
-
   // --- "At a Glance" Data ---
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  const overdueInvoices = invoices
-    .filter(inv => 
-        (inv.status === InvoiceStatus.OVERDUE || (new Date(inv.due_date) < today)) && 
-        inv.status !== InvoiceStatus.PAID && 
-        inv.status !== InvoiceStatus.DRAFT
-    )
+  const allOverdueInvoices = useMemo(() => invoices.filter(inv =>
+      (inv.status === InvoiceStatus.OVERDUE || (inv.due_date && new Date(inv.due_date) < today)) &&
+      inv.status !== InvoiceStatus.PAID &&
+      inv.status !== InvoiceStatus.DRAFT
+  ), [invoices]);
+
+  const overdueInvoices = allOverdueInvoices
     .map(inv => {
         const balance = getInvoiceTotal(inv) - getInvoiceTotalPaid(inv);
         const dueDate = new Date(inv.due_date);
@@ -157,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card 
           title="Projects In Progress" 
           value={`${inProgressProjectsCount}`} 
@@ -196,38 +183,6 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b-2 border-blue-200 pb-2">Expense Breakdown</h3>
-          {expenseData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={expenseData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  nameKey="name"
-                  paddingAngle={5}
-                >
-                  {expenseData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `GMD ${value.toLocaleString()}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-[300px] text-gray-500">No expense data for selected period.</div>
-          )}
-        </div>
-      </div>
-      
       {/* At a Glance Section */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-xl border-t border-l border-gray-50 border-b-4 border-r-4 border-gray-300">
