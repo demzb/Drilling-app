@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Invoice, InvoiceStatus, Project, ProjectStatus, InvoiceType, Payment, Client, PaymentMethod } from '../types';
+import { Invoice, InvoiceStatus, Project, Client, Payment, PaymentMethod } from '../types';
 import InvoiceEditor from './InvoiceEditor';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import ConfirmationModal from './ConfirmationModal';
@@ -145,6 +145,12 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
         return result;
     }, [invoices, statusFilter, sortOrder]);
 
+    const handleMarkAsSent = async (invoice: Invoice) => {
+        const updatedInvoice = { ...invoice, status: InvoiceStatus.SENT };
+        const { created_at, user_id, ...saveData } = updatedInvoice;
+        await onSave(saveData);
+    };
+
     if(view === 'editor') {
       return (
         <InvoiceEditor
@@ -220,97 +226,100 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                             onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
                             className="flex items-center text-sm text-gray-600 border border-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
+                            <svg xmlns="http://www.w.3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
                             Sort by Date ({sortOrder === 'newest' ? 'Newest' : 'Oldest'})
                         </button>
                          <button
                             onClick={handleOpenCreate}
                             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors shadow-md flex items-center"
                         >
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                            Create Invoice
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                             </svg>
+                            New Invoice
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             {filteredAndSortedInvoices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredAndSortedInvoices.map((invoice) => {
+                    {filteredAndSortedInvoices.map(invoice => {
+                        const { badge, border } = getStatusStyles(invoice.status);
                         const total = getInvoiceTotal(invoice);
-                        const totalPaid = getInvoiceTotalPaid(invoice);
-                        const balance = total - totalPaid;
-                        const statusStyles = getStatusStyles(invoice.status);
+                        const paid = getInvoiceTotalPaid(invoice);
+                        const balance = total - paid;
+                        const isOverdue = invoice.status === InvoiceStatus.OVERDUE || (invoice.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== InvoiceStatus.PAID);
 
                         return (
-                        <div key={invoice.id} className={`bg-gradient-to-br from-white to-slate-50 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border-l-4 ${statusStyles.border} flex flex-col`}>
-                            <div className="p-5 flex-grow">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-blue-600">{invoice.invoice_number}</p>
-                                        <p className="text-sm font-medium text-gray-700 truncate">{invoice.client_name}</p>
-                                        {invoice.project_name && (
-                                            <p className="text-xs text-gray-500 truncate mt-1 flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                </svg>
-                                                {invoice.project_name}
-                                            </p>
+                            <div key={invoice.id} className={`bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4 ${border} flex flex-col`}>
+                                <div className="p-5 flex-grow">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="text-sm font-semibold text-blue-600">{invoice.invoice_number}</p>
+                                            <p className="font-bold text-gray-800 truncate">{invoice.client_name}</p>
+                                        </div>
+                                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${badge}`}>{invoice.status}</span>
+                                    </div>
+                                    <div className="mt-4 space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Total Invoiced</span>
+                                            <span className="font-medium text-gray-800">GMD {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Amount Paid</span>
+                                            <span className="font-medium text-green-600">GMD {paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 mt-1 border-t">
+                                            <span className="font-bold text-gray-800">Balance Due</span>
+                                            <span className={`font-bold text-lg ${balance > 0 ? 'text-red-600' : 'text-gray-800'}`}>GMD {balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 text-xs text-gray-500">
+                                        {isOverdue ? (
+                                            <p className="font-semibold text-red-600">Due on: {invoice.due_date || 'N/A'}</p>
+                                        ) : (
+                                            <p>Due on: {invoice.due_date || 'N/A'}</p>
                                         )}
                                     </div>
-                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusStyles.badge} shrink-0`}>
-                                        {invoice.status}
-                                    </span>
                                 </div>
-
-                                <div className="mt-4 pt-4 border-t space-y-2">
-                                    <div className="flex justify-between text-sm items-baseline">
-                                        <span className="text-gray-500">Total:</span>
-                                        <span className="font-semibold text-gray-800">GMD {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm items-baseline">
-                                        <span className="text-gray-500">Paid:</span>
-                                        <span className="font-semibold text-green-600">GMD {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm items-baseline">
-                                        <span className="text-gray-500 font-semibold">Balance:</span>
-                                        <span className="font-bold text-red-600">GMD {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                </div>
-                                
-                                <div className="mt-4 pt-2 border-t text-xs text-gray-500 space-y-1">
-                                    <div className="flex justify-between">
-                                        <span>Invoice Date:</span>
-                                        <span className="font-medium">{invoice.date}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Due Date:</span>
-                                        <span className="font-medium">{invoice.due_date || 'N/A'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="bg-gray-50/50 px-2 py-2 flex justify-center items-center border-t">
-                                <div className="flex flex-wrap justify-center gap-x-1 gap-y-1">
-                                    <button onClick={() => handleViewDetails(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>View</button>
-                                    <button onClick={() => handleOpenEdit(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>Edit</button>
-                                    {invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.DRAFT && (
-                                        <button onClick={() => handleOpenPaymentModal(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-green-700 hover:bg-green-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>Pay</button>
+                                <div className="bg-gray-50/70 px-4 py-3 flex flex-wrap justify-end items-center gap-x-4 gap-y-2 border-t">
+                                    {invoice.status === InvoiceStatus.DRAFT && (
+                                        <button
+                                            onClick={() => handleMarkAsSent(invoice)}
+                                            className="flex items-center text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md transition-colors shadow-sm"
+                                            title="Mark this invoice as sent to the client"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.428A1 1 0 009.894 15V4a1 1 0 011-1h.002a1 1 0 01.998 1.117l-1 8a1 1 0 00.894.883l5-1.428a1 1 0 001.17-1.408l-7-14z" />
+                                            </svg>
+                                            Mark as Sent
+                                        </button>
                                     )}
-                                    <button onClick={() => handleOpenHistoryModal(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-purple-700 hover:bg-purple-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.898 0V3a1 1 0 112 0v2.101a7.002 7.002 0 01.491 10.592l-1.954 1.954A1 1 0 0115.536 18H4.464a1 1 0 01-.707-1.707l-1.954-1.954A7.002 7.002 0 014 5.101V3a1 1 0 011-1zM6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" /></svg>Payments</button>
-                                    <button onClick={() => handleDeleteRequest(invoice)} className="flex items-center text-xs font-medium text-gray-600 hover:text-red-700 hover:bg-red-50 rounded-md p-2 transition-colors duration-200"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>Delete</button>
+                                    {![InvoiceStatus.DRAFT, InvoiceStatus.PAID].includes(invoice.status) && (
+                                        <button onClick={() => handleOpenPaymentModal(invoice)} className="flex items-center text-sm font-medium text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded-md transition-colors shadow-sm">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" /><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" /></svg>
+                                            Receive Payment
+                                        </button>
+                                    )}
+                                    <button onClick={() => handleViewDetails(invoice)} className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">View Details</button>
+                                    {invoice.payments && invoice.payments.length > 0 && (
+                                        <button onClick={() => handleOpenHistoryModal(invoice)} className="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">History</button>
+                                    )}
+                                    <button onClick={() => handleOpenEdit(invoice)} className="text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors">Edit</button>
+                                    <button onClick={() => handleDeleteRequest(invoice)} className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors">Delete</button>
                                 </div>
                             </div>
-                        </div>
-                    )})}
+                        )
+                    })}
                 </div>
-                ) : (
+            ) : (
                 <div className="text-center text-gray-500 py-16 bg-white rounded-lg shadow-md border-2 border-dashed">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices found</h3>
-                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new invoice or adjusting your filters.</p>
+                    <p className="mt-1 text-sm text-gray-500">Create a new invoice to get started.</p>
                 </div>
             )}
         </div>

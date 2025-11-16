@@ -90,14 +90,17 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
         const incomeTransactions = filtered.filter(t => t.type === TransactionType.INCOME);
         const expenseTransactions = filtered.filter(t => t.type === TransactionType.EXPENSE);
 
-        const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+        // FIX: Explicitly type reduce parameters to prevent type inference issues.
+        const totalIncome = incomeTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
-        const expensesByCategory = expenseTransactions.reduce((acc: Record<string, number>, t) => {
+        // FIX: Explicitly type reduce parameters to prevent type inference issues.
+        const expensesByCategory = expenseTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
             acc[t.category] = (acc[t.category] || 0) + t.amount;
             return acc;
-        }, {});
+        }, {} as Record<string, number>);
         
-        const totalExpenses = Object.values(expensesByCategory).reduce((sum, amount) => sum + amount, 0);
+        // FIX: Explicitly type reduce parameters to prevent type inference issues.
+        const totalExpenses = Object.values(expensesByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
         const netProfit = totalIncome - totalExpenses;
 
         const data: ProfitAndLossStatementItem[] = [];
@@ -127,9 +130,10 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
     
     const generateProjectProfitabilityReport = () => {
         setIsLoading(true);
-        // FIX: Explicitly type the 'p' parameter to ensure correct type inference for its properties.
+        // FIX: Explicitly typing the map and reduce callback parameters resolves
+        // potential type inference issues where TS might infer 'unknown' or 'any',
+        // leading to compilation errors.
         const data: ProjectProfitabilityReportItem[] = projects.map((p: Project) => {
-            // FIX: Explicitly type the accumulator in reduce to prevent incorrect type inference to 'unknown'.
             const materialCosts = (p.materials || []).reduce((sum: number, m) => sum + (m.quantity * m.unitCost), 0);
             const staffCosts = (p.staff || []).reduce((sum: number, s) => sum + s.paymentAmount, 0);
             const otherCosts = (p.other_expenses || []).reduce((sum: number, e) => sum + e.amount, 0);

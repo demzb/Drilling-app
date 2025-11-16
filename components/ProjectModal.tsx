@@ -49,7 +49,20 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'borehole_type') {
+        setFormData(prev => {
+            const clientName = prev.client_name;
+            const newProjectName = clientName ? `${clientName} ${value} Borehole` : prev.name;
+            return {
+                ...prev,
+                borehole_type: value as BoreholeType,
+                name: newProjectName,
+            };
+        });
+    } else {
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
   
   const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -60,21 +73,34 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
         return;
     }
     const selectedClient = clients.find(c => c.id === selectedClientId);
-    setFormData(prev => ({
-        ...prev,
-        client_id: selectedClientId || undefined,
-        client_name: selectedClient ? selectedClient.name : '',
-    }));
+    const clientName = selectedClient ? selectedClient.name : '';
+
+    setFormData(prev => {
+        const boreholeType = prev.borehole_type;
+        const newProjectName = clientName ? `${clientName} ${boreholeType} Borehole` : '';
+        
+        return {
+            ...prev,
+            client_id: selectedClientId || undefined,
+            client_name: clientName,
+            name: newProjectName,
+        };
+    });
   };
 
   const handleSaveNewClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }): Promise<Client | null> => {
     const newClient = await onSaveClient(clientData);
     if (newClient) {
-        setFormData(prev => ({
-            ...prev,
-            client_id: newClient.id,
-            client_name: newClient.name,
-        }));
+        setFormData(prev => {
+            const boreholeType = prev.borehole_type;
+            const newProjectName = newClient.name ? `${newClient.name} ${boreholeType} Borehole` : '';
+            return {
+                ...prev,
+                client_id: newClient.id,
+                client_name: newClient.name,
+                name: newProjectName,
+            };
+        });
     }
     // Return the new client so the self-contained ClientModal can close itself.
     return newClient;
@@ -120,10 +146,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Project Name</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required/>
-                </div>
-                <div>
                     <label className="block text-sm font-medium text-gray-700">Client</label>
                     <select name="client_id" value={formData.client_id || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                       <option value="">Select a client...</option>
@@ -131,6 +153,16 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
                       <option value="--new--" className="font-bold text-blue-600">-- Add New Client --</option>
                     </select>
                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Borehole Type</label>
+                    <select name="borehole_type" value={formData.borehole_type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        {Object.values(BoreholeType).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Project Name</label>
+                <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required/>
             </div>
              <div>
                 <label className="block text-sm font-medium text-gray-700">Location</label>
@@ -146,16 +178,10 @@ const ProjectModal: React.FC<ProjectModalProps> = ({ isOpen, onClose, onSave, pr
                     <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Total Budget (GMD)</label>
                     <input type="number" name="total_budget" value={formData.total_budget} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Borehole Type</label>
-                    <select name="borehole_type" value={formData.borehole_type} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        {Object.values(BoreholeType).map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Status</label>
