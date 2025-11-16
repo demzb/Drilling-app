@@ -226,7 +226,7 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                             onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
                             className="flex items-center text-sm text-gray-600 border border-gray-300 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
                         >
-                            <svg xmlns="http://www.w.3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" /></svg>
                             Sort by Date ({sortOrder === 'newest' ? 'Newest' : 'Oldest'})
                         </button>
                          <button
@@ -257,7 +257,12 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <p className="text-sm font-semibold text-blue-600">{invoice.invoice_number}</p>
-                                            <p className="font-bold text-gray-800 truncate">{invoice.client_name}</p>
+                                            <p className="font-bold text-gray-800">{invoice.client_name}</p>
+                                            {invoice.project_name && (
+                                                <p className="text-sm text-gray-600 mt-1 break-words">
+                                                    {invoice.project_name}
+                                                </p>
+                                            )}
                                         </div>
                                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${badge}`}>{invoice.status}</span>
                                     </div>
