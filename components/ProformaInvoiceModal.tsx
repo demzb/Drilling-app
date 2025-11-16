@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, LineItem, InvoiceStatus, Project, InvoiceType, BoreholeType, Payment, Client } from '../types';
 
-interface InvoiceModalProps {
+interface ProformaInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (invoice: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
@@ -11,9 +11,9 @@ interface InvoiceModalProps {
   clients: Client[];
 }
 
-const emptyInvoice = {
+const emptyInvoice: Omit<Invoice, 'id' | 'user_id' | 'created_at'> = {
   invoice_number: '',
-  client_id: undefined,
+  project_id: '',
   client_name: '',
   client_address: '',
   date: new Date().toISOString().split('T')[0],
@@ -23,7 +23,6 @@ const emptyInvoice = {
   notes: 'Thank you for your business. Please make payment to the specified account.',
   tax_rate: 0,
   discount_amount: 0,
-  project_id: undefined,
   project_name: undefined,
   status: InvoiceStatus.DRAFT,
   invoice_type: InvoiceType.PROFORMA,
@@ -35,7 +34,7 @@ const emptyInvoice = {
 };
 
 
-const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
+const ProformaInvoiceModal: React.FC<ProformaInvoiceModalProps> = ({ isOpen, onClose, onSave, invoiceToEdit, nextInvoiceNumber, projects, clients }) => {
   const [invoice, setInvoice] = useState<Omit<Invoice, 'id' | 'user_id' | 'created_at'> & {id?: string}>(emptyInvoice);
   
   const [total, setTotal] = useState(0);
@@ -81,24 +80,12 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
 
       setInvoice({
           ...invoice,
-          project_id: selectedProjectId || undefined,
+          project_id: selectedProjectId,
           project_name: selectedProject ? selectedProject.name : undefined,
           // If project is selected, auto-select client
-          client_id: projectClient ? projectClient.id : invoice.client_id,
-          client_name: projectClient ? projectClient.name : (selectedProject ? selectedProject.client_name : invoice.client_name),
-          client_address: projectClient ? projectClient.address : invoice.client_address,
+          client_name: projectClient ? projectClient.name : (selectedProject ? selectedProject.client_name : ''),
+          client_address: projectClient ? projectClient.address : '',
           borehole_type: selectedProject ? (selectedProject.borehole_type || BoreholeType.SOLAR_MEDIUM) : invoice.borehole_type,
-      });
-  };
-
-  const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const selectedClientId = e.target.value;
-      const selectedClient = clients.find(c => c.id === selectedClientId);
-      setInvoice({
-          ...invoice,
-          client_id: selectedClientId || undefined,
-          client_name: selectedClient ? selectedClient.name : '',
-          client_address: selectedClient ? selectedClient.address : '',
       });
   };
   
@@ -127,8 +114,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   };
 
   const handleSave = async () => {
-    if (!invoice.client_id) {
-        alert("Please select a client for the invoice.");
+    if (!invoice.project_id) {
+        alert("Please select a project for the invoice.");
         return;
     }
     await onSave({
@@ -151,8 +138,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">Link to Project</label>
-              <select name="project_id" value={invoice.project_id || ''} onChange={handleProjectChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                  <option value="">Select a project (optional)</option>
+              <select name="project_id" value={invoice.project_id || ''} onChange={handleProjectChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required>
+                  <option value="" disabled>Select a project</option>
                   {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
@@ -174,15 +161,11 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
                 <label className="block text-sm font-medium text-gray-700">Client</label>
-                <select name="client_id" value={invoice.client_id || ''} onChange={handleClientChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required disabled={!!invoice.project_id}>
-                    <option value="">Select a client...</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {invoice.project_id && <p className="text-xs text-gray-500 mt-1">Client is linked from the selected project.</p>}
+                 <input type="text" name="client_name" value={invoice.client_name} readOnly className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm" placeholder="Client will populate from project"/>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Client Address</label>
-              <textarea name="client_address" value={invoice.client_address} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Client address will populate here"></textarea>
+              <textarea name="client_address" value={invoice.client_address} readOnly rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm" placeholder="Client address will populate here"></textarea>
             </div>
           </div>
 
@@ -257,4 +240,4 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, onSave, in
   );
 };
 
-export default InvoiceModal;
+export default ProformaInvoiceModal;

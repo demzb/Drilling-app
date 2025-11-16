@@ -109,7 +109,6 @@ export interface Client {
 export interface Invoice {
   id: string;
   invoice_number: string;
-  client_id?: string;
   client_name: string;
   client_email?: string;
   client_address: string;
@@ -124,7 +123,7 @@ export interface Invoice {
   discount_amount: number; // Fixed discount amount
   status: InvoiceStatus;
   invoice_type: InvoiceType;
-  project_id?: string; // Link to project
+  project_id: string; // Link to project
   project_name?: string; // For easy display
   payments: Payment[];
   borehole_type?: BoreholeType;

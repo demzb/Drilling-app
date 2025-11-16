@@ -10,7 +10,6 @@ interface InvoiceEditorProps {
     nextInvoiceNumber: string;
     projects: Project[];
     clients: Client[];
-    onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
     onReceivePayment: (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => Promise<{ updatedInvoice: Invoice, newPayment: Payment } | null>;
 }
 
@@ -30,7 +29,7 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
         
         return {
             invoice_number: nextInvoiceNumber,
-            client_id: undefined,
+            project_id: '',
             client_name: '',
             client_email: '',
             client_address: '',
@@ -56,11 +55,14 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
             const { user_id, created_at, ...editableInvoice } = invoiceToEdit;
             setInvoice({
                 ...editableInvoice,
-                client_email: clients.find(c => c.id === editableInvoice.client_id)?.email || '',
+                client_email: clients.find(c => {
+                    const project = projects.find(p => p.id === editableInvoice.project_id);
+                    return project?.client_id === c.id;
+                })?.email || '',
                 statement_message: editableInvoice.statement_message || '',
             });
         }
-    }, [invoiceToEdit, clients]);
+    }, [invoiceToEdit, clients, projects]);
 
     const { subtotal, total, balanceDue } = useMemo(() => {
         const subtotal = invoice.line_items.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
@@ -75,15 +77,18 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
     }, [invoice.line_items, invoice.tax_rate, invoice.discount_amount, invoice.payments]);
 
 
-    const handleClientChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedClientId = e.target.value;
-        const selectedClient = clients.find(c => c.id === selectedClientId);
+    const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedProjectId = e.target.value;
+        const selectedProject = projects.find(p => p.id === selectedProjectId);
+        const projectClient = selectedProject ? clients.find(c => c.id === selectedProject.client_id) : null;
+
         setInvoice(prev => ({
             ...prev,
-            client_id: selectedClientId || undefined,
-            client_name: selectedClient?.name || '',
-            client_address: selectedClient?.address || '',
-            client_email: selectedClient?.email || ''
+            project_id: selectedProjectId || '',
+            project_name: selectedProject ? selectedProject.name : undefined,
+            client_name: projectClient ? projectClient.name : (selectedProject ? selectedProject.client_name : ''),
+            client_address: projectClient ? projectClient.address : '',
+            client_email: projectClient ? projectClient.email : ''
         }));
     };
 
@@ -126,8 +131,8 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
     };
 
     const handleSave = () => {
-        if (!invoice.client_id) {
-            alert('Please select a customer.');
+        if (!invoice.project_id) {
+            alert('Please select a project.');
             return;
         }
         onSave(invoice);
@@ -179,29 +184,31 @@ const InvoiceEditor: React.FC<InvoiceEditorProps> = ({ invoiceToEdit, onCancel, 
                         <div className="md:col-span-2 bg-white p-6 rounded-lg shadow-sm space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium text-gray-700 flex items-center">Customer <HelpCircleIcon /></label>
-                                    <select name="client_id" value={invoice.client_id || ''} onChange={handleClientChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                        <option value="">Select a customer</option>
-                                        {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    <label className="text-sm font-medium text-gray-700 flex items-center">Link to Project</label>
+                                    <select name="project_id" value={invoice.project_id} onChange={handleProjectChange} required className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <option value="" disabled>Select a project</option>
+                                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                 </div>
-                                <div>
+                                 <div>
                                     <label className="text-sm font-medium text-gray-700 flex items-center">Customer email <HelpCircleIcon /></label>
-                                    <input type="email" name="client_email" value={invoice.client_email || ''} onChange={handleInputChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                    <input type="email" name="client_email" value={invoice.client_email || ''} readOnly className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100" />
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <a href="#" className="text-sm text-blue-600 hover:underline">Cc/Bcc</a>
-                                <div className="flex items-center">
-                                    <input id="send_later" name="send_later" type="checkbox" checked={invoice.send_later} onChange={handleInputChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                                    <label htmlFor="send_later" className="ml-2 block text-sm text-gray-900">Send later</label>
-                                    <HelpCircleIcon />
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                               
+                                 <div className="flex items-end">
+                                    <div className="flex items-center">
+                                        <input id="send_later" name="send_later" type="checkbox" checked={invoice.send_later} onChange={handleInputChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                                        <label htmlFor="send_later" className="ml-2 block text-sm text-gray-900">Send later</label>
+                                        <HelpCircleIcon />
+                                    </div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
                                     <label className="text-sm font-medium text-gray-700">Billing address</label>
-                                    <textarea name="client_address" value={invoice.client_address} onChange={handleInputChange} rows={4} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                                    <textarea name="client_address" value={invoice.client_address} readOnly rows={4} className="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-gray-100"></textarea>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-gray-700">Terms</label>

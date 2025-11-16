@@ -15,10 +15,9 @@ interface InvoicesProps {
   onSave: (invoice: Omit<Invoice, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<void>;
   onDelete: (invoiceId: string) => void;
   onReceivePayment: (invoiceId: string, paymentDetails: Omit<Payment, 'id'>) => Promise<{ updatedInvoice: Invoice, newPayment: Payment } | null>;
-  onSaveClient: (clientData: Omit<Client, 'id' | 'created_at' | 'user_id'> & { id?: string }) => Promise<Client | null>;
 }
 
-const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment, onSaveClient }) => {
+const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave, onDelete, onReceivePayment }) => {
     const [view, setView] = useState<'list' | 'editor'>('list');
     const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
@@ -155,7 +154,6 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
           nextInvoiceNumber={getNextInvoiceNumber()}
           projects={projects}
           clients={clients}
-          onSaveClient={onSaveClient}
           onReceivePayment={onReceivePayment}
         />
       );
@@ -251,6 +249,14 @@ const Invoices: React.FC<InvoicesProps> = ({ invoices, projects, clients, onSave
                                     <div>
                                         <p className="font-bold text-blue-600">{invoice.invoice_number}</p>
                                         <p className="text-sm font-medium text-gray-700 truncate">{invoice.client_name}</p>
+                                        {invoice.project_name && (
+                                            <p className="text-xs text-gray-500 truncate mt-1 flex items-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                                {invoice.project_name}
+                                            </p>
+                                        )}
                                     </div>
                                     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusStyles.badge} shrink-0`}>
                                         {invoice.status}

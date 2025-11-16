@@ -474,7 +474,7 @@ const App: React.FC = () => {
       case 'Projects':
         return <Projects projects={projects} employees={employees} clients={clients} onDeleteProject={handleDeleteProject} onSaveProject={handleSaveProject} onUpdateProjectDetails={handleProjectDetailsUpdate} onSaveClient={handleSaveClient} />;
       case 'Invoices':
-        return <Invoices invoices={invoices} projects={projects} clients={clients} onSave={handleSaveInvoice} onDelete={handleDeleteInvoice} onReceivePayment={handleReceivePayment} onSaveClient={handleSaveClient} />;
+        return <Invoices invoices={invoices} projects={projects} clients={clients} onSave={handleSaveInvoice} onDelete={handleDeleteInvoice} onReceivePayment={handleReceivePayment} />;
       case 'Clients':
         return <Clients clients={clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} />;
       case 'Human Resources':
