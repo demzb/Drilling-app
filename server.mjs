@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // Increase limit for potentially large transaction lists
 
-app.post('/api/generate-summary', async (req, res) => {
+app.post('/generate-summary', async (req, res) => {
   const { transactions, projects, startDate, endDate } = req.body;
 
   if (!transactions || !Array.isArray(transactions) || !projects || !Array.isArray(projects)) {
