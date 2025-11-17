@@ -19,16 +19,126 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   
+  // State for summary date filtering
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [activeRange, setActiveRange] = useState<'30d' | '90d' | 'year' | 'all' | 'custom'>('all');
+
   const totalIncome = transactions.filter(t => t.type === TransactionType.INCOME).reduce((acc, t) => acc + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((acc, t) => acc + t.amount, 0);
   const netProfit = totalIncome - totalExpense;
 
+  const handleSetDateRange = (range: '30d' | '90d' | 'year' | 'all') => {
+    setActiveRange(range);
+    const end = new Date();
+    let start = new Date();
+
+    switch (range) {
+        case '30d':
+            start.setDate(end.getDate() - 30);
+            setStartDate(start.toISOString().split('T')[0]);
+            setEndDate(end.toISOString().split('T')[0]);
+            break;
+        case '90d':
+            start.setDate(end.getDate() - 90);
+            setStartDate(start.toISOString().split('T')[0]);
+            setEndDate(end.toISOString().split('T')[0]);
+            break;
+        case 'year':
+            start = new Date(end.getFullYear(), 0, 1);
+            setStartDate(start.toISOString().split('T')[0]);
+            setEndDate(end.toISOString().split('T')[0]);
+            break;
+        case 'all':
+            setStartDate('');
+            setEndDate('');
+            break;
+    }
+  };
+
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'start' | 'end') => {
+      setActiveRange('custom');
+      if (type === 'start') setStartDate(e.target.value);
+      if (type === 'end') setEndDate(e.target.value);
+  }
+  
+  const filteredTransactionsForSummary = useMemo(() => {
+    if (!startDate && !endDate) {
+      return transactions;
+    }
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    if(start) start.setHours(0, 0, 0, 0);
+    if(end) end.setHours(23, 59, 59, 999);
+
+    return transactions.filter(t => {
+      try {
+        const transactionDate = new Date(t.date);
+        if(isNaN(transactionDate.getTime())) return false;
+        if (start && transactionDate < start) return false;
+        if (end && transactionDate > end) return false;
+        return true;
+      } catch (e) {
+        return false;
+      }
+    });
+  }, [transactions, startDate, endDate]);
+
   const handleGenerateSummary = async () => {
     setIsLoading(true);
     setAiSummary('');
-    const summary = await generateFinancialSummary(transactions, projects);
+    const summary = await generateFinancialSummary(filteredTransactionsForSummary, projects, startDate, endDate);
     setAiSummary(summary);
     setIsLoading(false);
+  };
+  
+  const markdownToHtml = (text: string): string => {
+    // A simple converter for the expected markdown format
+    let html = text
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/\*\*\*(.*)/g, '<hr />')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^- (.*$)/gm, '<ul><li>$1</li></ul>')
+        .replace(/<\/ul>\n<ul>/g, '')
+        .replace(/\n/g, '<br />');
+
+    return html;
+  };
+  
+  const handleDownloadSummary = () => {
+    if (!aiSummary) return;
+
+    const htmlContent = markdownToHtml(aiSummary);
+
+    const fileHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Financial Analysis Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            h3 { color: #1E40AF; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
+            strong { color: #111; }
+            ul { margin: 0; padding-left: 20px; }
+            li { margin-bottom: 5px; }
+            hr { border: 0; border-top: 1px solid #ccc; margin: 1em 0; }
+          </style>
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+      </html>
+    `;
+    
+    const blob = new Blob([fileHtml], { type: 'application/msword' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Financial_Analysis_Report.doc';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleOpenAddModal = () => {
@@ -61,12 +171,27 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
 
   const displaySummary = useMemo(() => {
     if (!aiSummary) return { __html: '' };
-    const html = aiSummary
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br />');
+     // More robust markdown conversion for display
+    let html = aiSummary
+      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold text-gray-800 mb-2 font-sans">$1</h3>')
+      .replace(/^\*\*(.*)\*\*$/gim, '<p class="text-sm text-gray-600 font-semibold">$1</p>')
+      .replace(/\*\*\*/g, '<hr class="my-4 border-gray-300">')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.*$)/gm, '<li class="ml-6 list-disc">$1</li>');
+    
+    // Wrap consecutive list items
+    html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>').replace(/<\/ul>\s*<ul>/g, '');
+    
+    // Handle newlines as paragraphs
+    html = html.split('\n').map(p => p.trim()).filter(p => p).map(p => {
+        if (p.startsWith('<li') || p.startsWith('<ul') || p.startsWith('<h3') || p.startsWith('<hr')) return p;
+        return `<p class="mb-2">${p}</p>`;
+    }).join('');
+
     return { __html: html };
   }, [aiSummary]);
 
+  const dateButtonClasses = (range: string) => `px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-200 shadow-sm ${activeRange === range ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border'}`;
 
   return (
     <div className="space-y-6">
@@ -107,26 +232,61 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
           <h3 className="text-lg font-semibold text-gray-700">AI Financial Summary</h3>
-          <button
-            onClick={handleGenerateSummary}
-            disabled={isLoading || transactions.length === 0}
-            className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-blue-300 transition-colors"
-          >
-            {isLoading ? (
-              <>
-                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Generating...
-              </>
-            ) : "Generate Summary"}
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+                onClick={handleDownloadSummary}
+                disabled={!aiSummary || isLoading}
+                className="flex items-center bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-green-300 transition-colors"
+              >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+              Download
+            </button>
+            <button
+              onClick={handleGenerateSummary}
+              disabled={isLoading || transactions.length === 0}
+              className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:bg-blue-300 transition-colors"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : "Generate Summary"}
+            </button>
+          </div>
         </div>
+        
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Select Period for Analysis</label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => handleSetDateRange('30d')} className={dateButtonClasses('30d')}>Last 30 Days</button>
+                      <button onClick={() => handleSetDateRange('90d')} className={dateButtonClasses('90d')}>Last 90 Days</button>
+                      <button onClick={() => handleSetDateRange('year')} className={dateButtonClasses('year')}>This Year</button>
+                      <button onClick={() => handleSetDateRange('all')} className={dateButtonClasses('all')}>All Time</button>
+                  </div>
+              </div>
+              <div>
+                  <label className="text-sm font-medium text-gray-700 w-full block mb-2">Or select a custom range</label>
+                  <div className="flex items-center gap-2">
+                      <input type="date" value={startDate} onChange={(e) => handleDateInputChange(e, 'start')} className="px-3 py-1.5 text-sm w-full bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <span className="text-gray-500 font-semibold">to</span>
+                      <input type="date" value={endDate} onChange={(e) => handleDateInputChange(e, 'end')} className="px-3 py-1.5 text-sm w-full bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  </div>
+              </div>
+          </div>
+        </div>
+
         {aiSummary && (
-          <div className="prose max-w-none bg-gray-50 p-4 rounded-md border border-gray-200">
+          <div className="prose max-w-none bg-gray-50 p-6 rounded-md border border-gray-200">
              <div dangerouslySetInnerHTML={displaySummary} />
           </div>
         )}
