@@ -71,16 +71,90 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
     });
   }, [transactions, startDate, endDate]);
 
+  // --- Comparison Period Logic ---
+  const { previousPeriodTransactions, isComparisonPossible } = useMemo(() => {
+    if (!startDate || !endDate || activeRange === 'all') {
+      return { previousPeriodTransactions: [], isComparisonPossible: false };
+    }
+    const currentStart = new Date(startDate);
+    const currentEnd = new Date(endDate);
+    
+    currentStart.setHours(0, 0, 0, 0);
+    currentEnd.setHours(23, 59, 59, 999);
+
+    const duration = currentEnd.getTime() - currentStart.getTime();
+    if (duration <= 0) {
+      return { previousPeriodTransactions: [], isComparisonPossible: false };
+    }
+
+    const previousEnd = new Date(currentStart.getTime() - 1); 
+    const previousStart = new Date(previousEnd.getTime() - duration);
+
+    const filtered = transactions.filter(t => {
+      try {
+        const transactionDate = new Date(t.date);
+        if (isNaN(transactionDate.getTime())) return false;
+        return transactionDate >= previousStart && transactionDate <= previousEnd;
+      } catch (e) {
+        return false;
+      }
+    });
+
+    return { previousPeriodTransactions: filtered, isComparisonPossible: true };
+  }, [transactions, startDate, endDate, activeRange]);
+
   // --- KPI Calculations ---
-  const totalRevenue = filteredTransactions
+  const totalRevenue = useMemo(() => filteredTransactions
     .filter(t => t.type === TransactionType.INCOME)
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + t.amount, 0), [filteredTransactions]);
   
-  const totalExpenses = filteredTransactions
+  const totalExpenses = useMemo(() => filteredTransactions
     .filter(t => t.type === TransactionType.EXPENSE)
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + t.amount, 0), [filteredTransactions]);
   
-  const netProfit = totalRevenue - totalExpenses;
+  const netProfit = useMemo(() => totalRevenue - totalExpenses, [totalRevenue, totalExpenses]);
+  
+  const previousTotalRevenue = useMemo(() => previousPeriodTransactions
+    .filter(t => t.type === TransactionType.INCOME)
+    .reduce((sum, t) => sum + t.amount, 0), [previousPeriodTransactions]);
+
+  const previousTotalExpenses = useMemo(() => previousPeriodTransactions
+    .filter(t => t.type === TransactionType.EXPENSE)
+    .reduce((sum, t) => sum + t.amount, 0), [previousPeriodTransactions]);
+    
+  const previousNetProfit = useMemo(() => previousTotalRevenue - previousTotalExpenses, [previousTotalRevenue, previousTotalExpenses]);
+
+  const calculateChange = (current: number, previous: number): { change?: string; changeType?: 'positive' | 'negative' } => {
+    if (!isComparisonPossible) {
+        return { change: undefined, changeType: undefined };
+    }
+    if (previous === 0) {
+        if (current > 0) return { change: 'New', changeType: 'positive' as const };
+        return { change: '0%', changeType: undefined };
+    }
+    if (current === 0) {
+        return { change: '100%', changeType: 'negative' as const };
+    }
+
+    const percentageChange = ((current - previous) / Math.abs(previous)) * 100;
+
+    if (Math.abs(percentageChange) < 0.1) {
+        return { change: '0%', changeType: undefined };
+    }
+
+    return {
+      change: `${Math.abs(percentageChange).toFixed(0)}%`,
+      changeType: percentageChange > 0 ? 'positive' as const : 'negative' as const,
+    };
+  };
+
+  const revenueChange = calculateChange(totalRevenue, previousTotalRevenue);
+  const expenseChangeRaw = calculateChange(totalExpenses, previousTotalExpenses);
+  const expenseChange = {
+    change: expenseChangeRaw.change,
+    changeType: expenseChangeRaw.changeType === 'positive' ? 'negative' : (expenseChangeRaw.changeType === 'negative' ? 'positive' : undefined),
+  };
+  const netProfitChange = calculateChange(netProfit, previousNetProfit);
   
   const outstandingAmount = invoices
     .filter(inv => inv.status !== InvoiceStatus.PAID && inv.status !== InvoiceStatus.DRAFT)
@@ -161,19 +235,25 @@ const Dashboard: React.FC<DashboardProps> = ({ projects, transactions, invoices 
           title="Total Revenue" 
           value={`GMD ${totalRevenue.toLocaleString()}`} 
           color="purple"
-          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} 
+          icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>}
+          change={revenueChange.change}
+          changeType={revenueChange.changeType}
         />
         <Card 
           title="Total Expenses" 
           value={`GMD ${totalExpenses.toLocaleString()}`} 
           color="red"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
+          change={expenseChange.change}
+          changeType={expenseChange.changeType}
         />
         <Card 
           title="Net Profit" 
           value={`GMD ${netProfit.toLocaleString()}`} 
           color="yellow"
           icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>}
+          change={netProfitChange.change}
+          changeType={netProfitChange.changeType}
         />
          <Card 
           title="Outstanding Amount" 

@@ -59,7 +59,7 @@ const Card: React.FC<CardProps> = ({ title, value, icon, change, changeType, col
         {change && (
           <p className={`text-xs mt-2 flex items-center ${changeColor}`}>
             <span className="mr-1">{changeIcon}</span>
-            {change} vs last month
+            {change} vs previous period
           </p>
         )}
       </div>

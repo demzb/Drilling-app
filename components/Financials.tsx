@@ -93,41 +93,23 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
     setIsLoading(false);
   };
   
-  const markdownToHtml = (text: string): string => {
-    // A simple converter for the expected markdown format
-    let html = text
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/\*\*\*(.*)/g, '<hr />')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^- (.*$)/gm, '<ul><li>$1</li></ul>')
-        .replace(/<\/ul>\n<ul>/g, '')
-        .replace(/\n/g, '<br />');
-
-    return html;
+  const handleClearSummary = () => {
+    setAiSummary('');
   };
   
   const handleDownloadSummary = () => {
     if (!aiSummary) return;
 
-    const htmlContent = markdownToHtml(aiSummary);
-
+    // The aiSummary is now a self-contained HTML block with inline styles.
     const fileHtml = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <title>Financial Analysis Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            h3 { color: #1E40AF; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
-            strong { color: #111; }
-            ul { margin: 0; padding-left: 20px; }
-            li { margin-bottom: 5px; }
-            hr { border: 0; border-top: 1px solid #ccc; margin: 1em 0; }
-          </style>
         </head>
-        <body>
-          ${htmlContent}
+        <body style="background-color: #F9FAFB; font-family: Arial, sans-serif; padding: 32px;">
+          ${aiSummary}
         </body>
       </html>
     `;
@@ -169,27 +151,7 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
     }
   };
 
-  const displaySummary = useMemo(() => {
-    if (!aiSummary) return { __html: '' };
-     // More robust markdown conversion for display
-    let html = aiSummary
-      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold text-gray-800 mb-2 font-sans">$1</h3>')
-      .replace(/^\*\*(.*)\*\*$/gim, '<p class="text-sm text-gray-600 font-semibold">$1</p>')
-      .replace(/\*\*\*/g, '<hr class="my-4 border-gray-300">')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^- (.*$)/gm, '<li class="ml-6 list-disc">$1</li>');
-    
-    // Wrap consecutive list items
-    html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>').replace(/<\/ul>\s*<ul>/g, '');
-    
-    // Handle newlines as paragraphs
-    html = html.split('\n').map(p => p.trim()).filter(p => p).map(p => {
-        if (p.startsWith('<li') || p.startsWith('<ul') || p.startsWith('<h3') || p.startsWith('<hr')) return p;
-        return `<p class="mb-2">${p}</p>`;
-    }).join('');
-
-    return { __html: html };
-  }, [aiSummary]);
+  const displaySummary = useMemo(() => ({ __html: aiSummary }), [aiSummary]);
 
   const dateButtonClasses = (range: string) => `px-3 py-1.5 text-xs font-medium rounded-full transition-colors duration-200 shadow-sm ${activeRange === range ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100 border'}`;
 
@@ -245,6 +207,17 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
               </svg>
               Download
             </button>
+            {aiSummary && !isLoading && (
+              <button
+                onClick={handleClearSummary}
+                className="flex items-center bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Clear
+              </button>
+            )}
             <button
               onClick={handleGenerateSummary}
               disabled={isLoading || transactions.length === 0}
@@ -286,7 +259,9 @@ const Financials: React.FC<FinancialsProps> = ({ transactions, projects, onSaveT
         </div>
 
         {aiSummary && (
-          <div className="prose max-w-none bg-gray-50 p-6 rounded-md border border-gray-200">
+          // The AI summary now has its own container and styling.
+          // This outer div is just a placeholder.
+          <div>
              <div dangerouslySetInnerHTML={displaySummary} />
           </div>
         )}

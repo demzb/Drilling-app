@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Project, Transaction, Invoice, Client, Employee, TransactionType, ProjectStatus, InvoiceStatus, ProjectProfitabilityReportItem, FinancialReportItem, InvoiceReportItem, Payment, ProfitAndLossStatementItem } from '../types';
+import { Project, Transaction, Invoice, Client, Employee, TransactionType, ProjectStatus, InvoiceStatus, ProjectProfitabilityReportItem, FinancialReportItem, InvoiceReportItem, Payment, ProfitAndLossStatementItem, Material, StaffAssignment, OtherExpense } from '../types';
 import { exportReportAsCsv, exportReportAsWord, printReport } from '../utils/exportUtils';
 import { getInvoiceTotal, getInvoiceTotalPaid } from '../utils/invoiceUtils';
 
@@ -92,13 +92,14 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
 
         const totalIncome = incomeTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
-        // FIX: Explicitly type reduce parameters to prevent type inference issues.
+        // FIX: Explicitly typing the reduce callback parameters resolves
+        // potential type inference issues where TS might infer 'unknown' or 'any',
+        // leading to compilation errors.
         const expensesByCategory = expenseTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
             acc[t.category] = (acc[t.category] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         
-        // FIX: Explicitly type reduce parameters to prevent type inference issues.
         const totalExpenses = Object.values(expensesByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
         const netProfit = totalIncome - totalExpenses;
 
@@ -133,9 +134,9 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
         // potential type inference issues where TS might infer 'unknown' or 'any',
         // leading to compilation errors.
         const data: ProjectProfitabilityReportItem[] = projects.map((p: Project) => {
-            const materialCosts = (p.materials || []).reduce((sum: number, m) => sum + (m.quantity * m.unitCost), 0);
-            const staffCosts = (p.staff || []).reduce((sum: number, s) => sum + s.paymentAmount, 0);
-            const otherCosts = (p.other_expenses || []).reduce((sum: number, e) => sum + e.amount, 0);
+            const materialCosts = (p.materials || []).reduce((sum: number, m: Material) => sum + (m.quantity * m.unitCost), 0);
+            const staffCosts = (p.staff || []).reduce((sum: number, s: StaffAssignment) => sum + s.paymentAmount, 0);
+            const otherCosts = (p.other_expenses || []).reduce((sum: number, e: OtherExpense) => sum + e.amount, 0);
             const totalCosts = materialCosts + staffCosts + otherCosts;
             const netProfit = p.amount_received - totalCosts;
 
