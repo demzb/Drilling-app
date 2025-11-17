@@ -90,16 +90,17 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
         const incomeTransactions = filtered.filter(t => t.type === TransactionType.INCOME);
         const expenseTransactions = filtered.filter(t => t.type === TransactionType.EXPENSE);
 
-        // FIX: Add explicit generic to reduce to ensure return type is number.
-        const totalIncome = incomeTransactions.reduce<number>((sum, t) => sum + t.amount, 0);
+        const totalIncome = incomeTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
+        // FIX: Explicitly typing the reduce callback parameters resolves
+        // potential type inference issues where TS might infer 'unknown' or 'any',
+        // leading to compilation errors.
         const expensesByCategory = expenseTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
             acc[t.category] = (acc[t.category] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
         
-        // FIX: Use Number() to safely cast `amount` which may be inferred as `unknown`. This fixes the arithmetic error.
-        const totalExpenses = Object.values(expensesByCategory).reduce((sum, amount) => sum + Number(amount), 0);
+        const totalExpenses = Object.values(expensesByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
         const netProfit = totalIncome - totalExpenses;
 
         const data: ProfitAndLossStatementItem[] = [];
@@ -111,8 +112,7 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
 
         data.push({ description: 'Expenses', amount: null, isHeader: true });
         Object.entries(expensesByCategory).forEach(([category, amount]) => {
-            // FIX: Use Number() to safely cast `amount` which may be inferred as `unknown`.
-            data.push({ description: category, amount: Number(amount), isSubItem: true });
+            data.push({ description: category, amount: amount, isSubItem: true });
         });
         if (Object.keys(expensesByCategory).length > 0) {
             data.push({ description: 'Total Expenses', amount: totalExpenses, isTotal: true });
@@ -130,6 +130,9 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
     
     const generateProjectProfitabilityReport = () => {
         setIsLoading(true);
+        // FIX: Explicitly typing the map and reduce callback parameters resolves
+        // potential type inference issues where TS might infer 'unknown' or 'any',
+        // leading to compilation errors.
         const data: ProjectProfitabilityReportItem[] = projects.map((p: Project) => {
             const materialCosts = (p.materials || []).reduce((sum: number, m: Material) => sum + (m.quantity * m.unitCost), 0);
             const staffCosts = (p.staff || []).reduce((sum: number, s: StaffAssignment) => sum + s.paymentAmount, 0);
