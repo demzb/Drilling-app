@@ -1,8 +1,8 @@
-import { GoogleGenAI } from '@google/genai';
-import { Transaction, Project, Material, StaffAssignment, OtherExpense } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { Transaction, Project } from '../types';
 
 export const generateFinancialSummary = async (
-  transactions: Transaction[], 
+  transactions: Transaction[],
   projects: Project[],
   startDate?: string,
   endDate?: string
@@ -13,17 +13,21 @@ export const generateFinancialSummary = async (
 
   if (!process.env.API_KEY) {
     console.error("Gemini API key not found. Please set it in your environment variables.");
-    return "AI service is not configured correctly. API key is missing.";
+    const vercelInfo = "If deploying on Vercel, make sure to add API_KEY to your project's Environment Variables in the settings.";
+    return `<div style="padding: 1rem; background-color: #FEF2F2; color: #B91C1C; border-radius: 0.5rem; border: 1px solid #FECACA;">
+              <h4 style="font-weight: 600;">Configuration Error</h4>
+              <p>AI service is not configured correctly. API key is missing. ${vercelInfo}</p>
+            </div>`;
   }
-  
+
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     // Pre-calculate project profitability to provide more context to the AI
-    const projectsWithProfitability = projects.map((p: Project) => {
-        const materialCosts = (p.materials || []).reduce((sum: number, m: Material) => sum + (m.quantity * m.unitCost), 0);
-        const staffCosts = (p.staff || []).reduce((sum: number, s: StaffAssignment) => sum + s.paymentAmount, 0);
-        const otherCosts = (p.other_expenses || []).reduce((sum: number, e: OtherExpense) => sum + e.amount, 0);
+    const projectsWithProfitability = projects.map((p) => {
+        const materialCosts = (p.materials || []).reduce((sum, m) => sum + (m.quantity * m.unitCost), 0);
+        const staffCosts = (p.staff || []).reduce((sum, s) => sum + s.paymentAmount, 0);
+        const otherCosts = (p.other_expenses || []).reduce((sum, e) => sum + e.amount, 0);
         const totalCosts = materialCosts + staffCosts + otherCosts;
         const netProfit = p.amount_received - totalCosts;
 
@@ -216,14 +220,17 @@ export const generateFinancialSummary = async (
         model: 'gemini-2.5-flash',
         contents: prompt,
     });
-    
+
     return response.text;
 
   } catch (error) {
     console.error("Error fetching financial summary from Gemini API:", error);
-    if (error instanceof Error) {
-        return `An error occurred while communicating with the AI service: ${error.message}`;
-    }
-    return "An unexpected error occurred while communicating with the AI service. Please try again later.";
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    // Return a user-friendly HTML error message that can be rendered in the UI.
+    return `<div style="padding: 1rem; background-color: #FEF2F2; color: #B91C1C; border-radius: 0.5rem; border: 1px solid #FECACA;">
+              <h4 style="font-weight: 600;">AI Service Error</h4>
+              <p>Could not generate summary. An error occurred while communicating with the AI service.</p>
+              <p style="font-size: 0.875rem; color: #DC2626; margin-top: 0.5rem;">Details: ${errorMessage}</p>
+            </div>`;
   }
 };
