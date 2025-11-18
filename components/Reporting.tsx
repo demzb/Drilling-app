@@ -92,12 +92,10 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
 
         const totalIncome = incomeTransactions.reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
-        // FIX: Explicitly typing the reduce accumulator and callback parameters
-        // resolves potential type inference issues that were causing errors.
         const expensesByCategory = expenseTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
             acc[t.category] = (acc[t.category] || 0) + t.amount;
             return acc;
-        }, {} as Record<string, number>);
+        }, {});
         
         const totalExpenses = Object.values(expensesByCategory).reduce((sum: number, amount: number) => sum + amount, 0);
         const netProfit = totalIncome - totalExpenses;
@@ -129,11 +127,12 @@ const Reporting: React.FC<ReportingProps> = ({ projects, transactions, invoices,
     
     const generateProjectProfitabilityReport = () => {
         setIsLoading(true);
-        // FIX: Explicitly typing the map and reduce callback parameters ensures type safety.
         const data: ProjectProfitabilityReportItem[] = projects.map((p: Project) => {
-            const materialCosts = (p.materials || []).reduce((sum: number, m: Material) => sum + (m.quantity * m.unitCost), 0);
-            const staffCosts = (p.staff || []).reduce((sum: number, s: StaffAssignment) => sum + s.paymentAmount, 0);
-            const otherCosts = (p.other_expenses || []).reduce((sum: number, e: OtherExpense) => sum + e.amount, 0);
+            // FIX: Cast values to Number to prevent type errors during arithmetic operations,
+            // ensuring robust calculation even if data source provides numbers as strings.
+            const materialCosts = (p.materials || []).reduce((sum: number, m: Material) => sum + (Number(m.quantity) * Number(m.unitCost)), 0);
+            const staffCosts = (p.staff || []).reduce((sum: number, s: StaffAssignment) => sum + Number(s.paymentAmount), 0);
+            const otherCosts = (p.other_expenses || []).reduce((sum: number, e: OtherExpense) => sum + Number(e.amount), 0);
             const totalCosts = materialCosts + staffCosts + otherCosts;
             const netProfit = p.amount_received - totalCosts;
 
